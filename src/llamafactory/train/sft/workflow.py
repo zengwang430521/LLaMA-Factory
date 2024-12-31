@@ -122,6 +122,26 @@ def run_sft(
     if training_args.predict_with_generate:
         tokenizer.padding_side = "left"  # use left-padding in generation
 
+
+    # 强行加载stream_head_weight
+    # import pdb; pdb.set_trace()
+    # print('Debug: Eval')
+    if training_args.resume_from_checkpoint is not None:
+        from safetensors.torch import load_file
+        import os
+        import torch
+        file_path = os.path.join(training_args.resume_from_checkpoint, 'adapter_model.safetensors')
+        tensors = load_file(file_path)
+        print(f"In model: {model.base_model.model.stream_head.weight}")
+        print(f"In ckpt: {tensors['base_model.model.stream_head.weight']}")
+        with torch.no_grad():
+            trainer.model.base_model.model.stream_head.lora_A.default.weight.fill_(0)
+            trainer.model.base_model.model.stream_head.lora_B.default.weight.fill_(0)
+            trainer.model.base_model.model.stream_head.weight.copy_(tensors['base_model.model.stream_head.weight'].to(model.device))
+        trainer.model = trainer.model.eval()
+        trainer.model = trainer.model.merge_and_unload()
+        # import pdb; pdb.set_trace()
+
     # Evaluation
     if training_args.do_eval:
         metrics = trainer.evaluate(metric_key_prefix="eval", **gen_kwargs)

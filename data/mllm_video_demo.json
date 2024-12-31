@@ -8,6 +8,14 @@
       {
         "content": "Because a baby is reading, and he is so cute!",
         "role": "assistant"
+      },
+      {
+        "content": "Why is this video funny?",
+        "role": "user"
+      },
+      {
+        "content": "Because a baby is reading, and he is so cute!",
+        "role": "assistant"
       }
     ],
     "videos": [

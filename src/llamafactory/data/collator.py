@@ -25,6 +25,7 @@ from transformers import DataCollatorForSeq2Seq
 
 from ..extras.constants import AUDIO_PLACEHOLDER, IGNORE_INDEX, IMAGE_PLACEHOLDER
 from ..extras.packages import is_pillow_available
+from .mm_plugin import Qwen2VLStreamPluginV5
 
 
 if is_pillow_available():
@@ -95,6 +96,10 @@ class MultiModalDataCollatorForSeq2Seq(DataCollatorForSeq2Seq):
             raise ValueError("Template is required for MultiModalDataCollator.")
 
     def __call__(self, features: list[dict[str, Any]]) -> dict[str, "torch.Tensor"]:
+        # import pdb; pdb.set_trace()
+        # print("Debug: 读取视频/图片")
+        flag_stream_v5 = isinstance(self.template.mm_plugin, Qwen2VLStreamPluginV5)
+
         batch_images, batch_videos, batch_audios = [], [], []
         batch_imglens, batch_vidlens, batch_audlens, batch_input_ids = [], [], [], []
         for feature in features:
@@ -118,6 +123,10 @@ class MultiModalDataCollatorForSeq2Seq(DataCollatorForSeq2Seq):
             fake_messages = self.template.mm_plugin.process_messages(
                 fake_messages, fake_images, [], [], self.processor
             )
+
+            if flag_stream_v5:
+                fake_messages = fake_messages[0]
+
             _fake_input_ids = self.tokenizer.encode(fake_messages[0]["content"], add_special_tokens=False)
             _fake_input_ids, _ = self.template.mm_plugin.process_token_ids(
                 _fake_input_ids, None, fake_images, [], [], self.tokenizer, self.processor
@@ -134,6 +143,10 @@ class MultiModalDataCollatorForSeq2Seq(DataCollatorForSeq2Seq):
             fake_messages = self.template.mm_plugin.process_messages(
                 fake_messages, [], [], fake_audios, self.processor
             )
+
+            if flag_stream_v5:
+                fake_messages = fake_messages[0]
+
             _fake_input_ids = self.tokenizer.encode(fake_messages[0]["content"], add_special_tokens=False)
             _fake_input_ids, _ = self.template.mm_plugin.process_token_ids(
                 _fake_input_ids, None, [], [], fake_audios, self.tokenizer, self.processor
@@ -147,23 +160,59 @@ class MultiModalDataCollatorForSeq2Seq(DataCollatorForSeq2Seq):
                 features[0]["input_ids"] = features[0]["input_ids"] + fake_input_ids
                 features[0]["attention_mask"] = features[0]["attention_mask"] + [0] * len(fake_input_ids)
                 features[0]["labels"] = features[0]["labels"] + [IGNORE_INDEX] * len(fake_input_ids)
+                if flag_stream_v5:
+                    features[0]["stream_labels"] = features[0]["stream_labels"] + [IGNORE_INDEX] * len(fake_input_ids)
             else:
                 features[0]["input_ids"] = fake_input_ids + features[0]["input_ids"]
                 features[0]["attention_mask"] = [0] * len(fake_input_ids) + features[0]["attention_mask"]
                 features[0]["labels"] = [IGNORE_INDEX] * len(fake_input_ids) + features[0]["labels"]
+                if flag_stream_v5:
+                    features[0]["stream_labels"] = [IGNORE_INDEX] * len(fake_input_ids) + features[0]["stream_labels"]
 
             batch_input_ids[0] = features[0]["input_ids"]
 
-        mm_inputs = self.template.mm_plugin.get_mm_inputs(
-            batch_images,
-            batch_videos,
-            batch_audios,
-            batch_imglens,
-            batch_vidlens,
-            batch_audlens,
-            batch_input_ids,
-            self.processor,
-        )
+        if flag_stream_v5:
+            # stream labels 需要特别处理
+            batch_frame_idxs, batch_frame_times = [], []
+            batch_stream_labels = []
+            batch_video_grid_thw = []
+            batch_fps_per_video = []
+            for feature in features:
+                frame_idxs = feature.pop("frame_idxs", None) or []
+                frame_times = feature.pop("frame_times", None) or []
+                v_grid_thw = feature.pop("video_grid_thw", None) or []
+                fps_per_video = feature.pop("fps_per_video", None) or []
+
+                batch_frame_idxs.extend(frame_idxs)
+                batch_frame_times.extend(frame_times)
+                batch_video_grid_thw.extend(v_grid_thw)
+                batch_fps_per_video.extend(fps_per_video)
+                batch_stream_labels.append(feature.pop("stream_labels", None))
+
+            mm_inputs = self.template.mm_plugin.get_mm_inputs(
+                batch_images,
+                batch_videos,
+                batch_audios,
+                batch_imglens,
+                batch_vidlens,
+                batch_audlens,
+                batch_input_ids,
+                self.processor,
+                batch_frame_idxs,
+                batch_fps_per_video
+            )
+        else:
+            mm_inputs = self.template.mm_plugin.get_mm_inputs(
+                batch_images,
+                batch_videos,
+                batch_audios,
+                batch_imglens,
+                batch_vidlens,
+                batch_audlens,
+                batch_input_ids,
+                self.processor,
+            )
+
         if "token_type_ids" in mm_inputs:
             token_type_ids = mm_inputs.pop("token_type_ids")
             for i, feature in enumerate(features):
@@ -172,10 +221,15 @@ class MultiModalDataCollatorForSeq2Seq(DataCollatorForSeq2Seq):
         features: dict[str, torch.Tensor] = super().__call__(features)
 
         if self.model is not None and hasattr(self.model, "get_rope_index"):  # for qwen2vl mrope
+            if flag_stream_v5:
+                video_grid_thw = torch.LongTensor(batch_video_grid_thw)
+            else:
+                video_grid_thw = mm_inputs.get("video_grid_thw", None)
+
             rope_index_kwargs = {
                 "input_ids": features["input_ids"],
                 "image_grid_thw": mm_inputs.get("image_grid_thw"),
-                "video_grid_thw": mm_inputs.get("video_grid_thw"),
+                "video_grid_thw": video_grid_thw,
                 "attention_mask": features["attention_mask"],
             }
             if "second_per_grid_ts" in mm_inputs:  # for qwen2vl

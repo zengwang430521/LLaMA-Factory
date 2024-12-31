@@ -175,6 +175,12 @@ def get_forbidden_modules(config: "PretrainedConfig", finetuning_args: "Finetuni
             logger.info_rank0(f"Set language model not trainable: {language_model_keys}.")
             forbidden_modules.update(language_model_keys)
 
+    elif model_type == "qwen2_vl_stream":
+        if finetuning_args.train_mm_proj_only:
+            forbidden_modules.update({"visual.patch_embed", "visual.blocks", "model", "lm_head", "stream_head"})
+        elif finetuning_args.freeze_vision_tower:
+            forbidden_modules.add("visual")
+
     return forbidden_modules
 
 
@@ -289,6 +295,24 @@ _register_composite_model(
 _register_composite_model(
     model_type="qwen2_5_vl",
     projector_key="visual.merger",
+    vision_model_keys=["visual.patch_embed", "visual.blocks"],
+    language_model_keys=["model", "lm_head"],
+    lora_conflict_keys=["patch_embed"],
+)
+
+
+_register_composite_model(
+    model_type="qwen2_vl_stream",
+    projector_key=["visual.merger", "stream_head"],
+    vision_model_keys=["visual.patch_embed", "visual.blocks"],
+    language_model_keys=["model", "lm_head"],
+    lora_conflict_keys=["patch_embed"],
+)
+
+
+_register_composite_model(
+    model_type="qwen2_5_vl_stream",
+    projector_key=["visual.merger", "stream_head"],
     vision_model_keys=["visual.patch_embed", "visual.blocks"],
     language_model_keys=["model", "lm_head"],
     lora_conflict_keys=["patch_embed"],

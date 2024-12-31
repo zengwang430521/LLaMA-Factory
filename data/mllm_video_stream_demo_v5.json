@@ -1,0 +1,40 @@
+[
+  {
+    "messages": [
+      {
+        "content": "<video>",
+        "role": "user"
+      },
+      {
+        "content": "Why is this video funny?",
+        "role": "user"
+      },
+      {
+        "content": "<video><+><video>",
+        "role": "user",
+        "ignore_end_stream": true
+      },
+      {
+        "content": "Because a baby is reading, and he is so cute!",
+        "role": "assistant",
+        "valid": false
+      }
+    ],
+    "videos": [
+      {
+        "file": "mllm_demo_data/3.mp4",
+        "time": [0.0, 3.0]
+      },
+      {
+        "file": "mllm_demo_data/3.mp4",
+        "time": [3.0, 7.0]
+      },
+      {
+        "file": "mllm_demo_data/1.mp4",
+        "time": [0.0, 10.0],
+        "negative_time": [[0.0, 2.0], [5.0, 6.0], [9.0, 10.0]],
+        "positive_time": [[3.0, 4.0], [7.0, 8.0]]
+      }
+    ]
+  }
+]

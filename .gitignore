@@ -176,3 +176,9 @@ output/
 wandb/
 swanlog/
 generated_predictions.jsonl
+
+cmd_火山.sh
+cmd_sensecore.sh
+cmd*
+cmd_debug/
+work_dirs/
