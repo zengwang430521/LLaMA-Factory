@@ -96,6 +96,9 @@ def preprocess_supervised_dataset(
 ) -> Dict[str, List[Any]]:
     # build inputs with format `<bos> X Y <eos>` and labels with format `<ignore> ... <ignore> Y <eos>`
     # for multiturn examples, we only mask the prompt part in each prompt-response pair.
+
+    import pdb; pdb.set_trace()
+
     model_inputs = defaultdict(list)
     for i in range(len(examples["_prompt"])):
         if len(examples["_prompt"][i]) % 2 != 1 or len(examples["_response"][i]) != 1:
@@ -138,7 +141,6 @@ def preprocess_packed_supervised_dataset(
     # build inputs with format `<bos> X1 Y1 <eos> <bos> X2 Y2 <eos>`
     # and labels with format `<ignore> ... <ignore> Y1 <eos> <ignore> ... <ignore> Y2 <eos>`
 
-    import pdb; pdb.set_trace()
     valid_num = 0
     batch_input_ids, batch_labels, batch_images, batch_videos = [], [], [], []
     lengths = []

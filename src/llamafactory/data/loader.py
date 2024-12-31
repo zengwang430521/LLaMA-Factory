@@ -193,6 +193,7 @@ def _get_preprocessed_dataset(
     preprocess_func, print_function = get_preprocess_and_print_func(
         data_args, stage, template, tokenizer, processor, do_generate=(training_args.predict_with_generate and is_eval)
     )
+    import pdb; pdb.set_trace()
     column_names = list(next(iter(dataset)).keys())
     kwargs = {}
     if not data_args.streaming:
