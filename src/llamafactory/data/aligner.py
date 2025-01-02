@@ -266,7 +266,9 @@ def convert_sharegpt_stream(
             broken_data = True
 
         aligned_messages.append(
-            {"role": tag_mapping[message[dataset_attr.role_tag]], "content": message[dataset_attr.content_tag]}
+            {"role": tag_mapping[message[dataset_attr.role_tag]],
+             "content": message[dataset_attr.content_tag],
+             "time": message['time']}
         )
 
     if (not dataset_attr.ranking and len(aligned_messages) % 2 != 0) or (
