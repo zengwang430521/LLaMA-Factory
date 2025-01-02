@@ -144,7 +144,7 @@ def get_dataset_list(dataset_names: Optional[Sequence[str]], dataset_dir: str) -
             for column_name in column_names:
                 dataset_attr.set_attr(column_name, dataset_info[name]["columns"])
 
-        if dataset_attr.formatting == "sharegpt" and "tags" in dataset_info[name]:
+        if dataset_attr.formatting in ["sharegpt", "sharegpt_stream"] and "tags" in dataset_info[name]:
             tag_names = (
                 "role_tag",
                 "content_tag",
