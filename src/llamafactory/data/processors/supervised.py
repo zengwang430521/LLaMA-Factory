@@ -45,6 +45,7 @@ def _encode_supervised_example(
     train_on_prompt: bool,
     mask_history: bool,
 ) -> Tuple[List[int], List[int]]:
+    import pdb; pdb.set_trace()
     messages = template.mm_plugin.process_messages(prompt + response, images, videos, processor)
     input_ids, labels = template.mm_plugin.process_token_ids([], [], images, videos, tokenizer, processor)
     encoded_pairs = template.encode_multiturn(tokenizer, messages, system, tools)
