@@ -757,7 +757,6 @@ class Qwen2vlStreamPlugin(BasePlugin):
                 video_maxlen=getattr(processor, "video_maxlen", 64),
             )
             input_dict["videos"] = videos
-            input_dict["frame_times"] = frame_times[::2]
 
         mm_inputs = {}
         if image_processor != video_processor:
@@ -768,7 +767,8 @@ class Qwen2vlStreamPlugin(BasePlugin):
         elif input_dict.get("images") is not None or input_dict.get("videos") is not None:  # same processor (qwen2-vl)
             mm_inputs.update(image_processor(**input_dict, return_tensors="pt"))
             if input_dict.get("videos") is not None:
-                mm_inputs['frame_times'] = 0
+                mm_inputs['frame_times'] = [torch.FloatTensor(t[::2]) for t in frame_times]
+
 
         return mm_inputs
 
