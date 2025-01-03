@@ -691,7 +691,7 @@ class Qwen2vlStreamPlugin(BasePlugin):
             total_frames = video_stream.frames
             sample_frames = self._get_video_sample_frames(video_stream, **kwargs)
             sample_indices = np.linspace(0, total_frames - 1, sample_frames).astype(np.int32)
-            sample_times = np.linspace(0, video_stream.duration * video_stream.time_base, sample_frames)
+            sample_times = np.linspace(0, float(video_stream.duration * video_stream.time_base), sample_frames)
 
             sample_indices_seg, sample_times_seg = [], []
             for idx, t in zip(sample_indices, sample_times):
@@ -757,6 +757,7 @@ class Qwen2vlStreamPlugin(BasePlugin):
                 video_maxlen=getattr(processor, "video_maxlen", 64),
             )
             input_dict["videos"] = videos
+            input_dict["frame_times"] = frame_times
 
         mm_inputs = {}
         if image_processor != video_processor:
