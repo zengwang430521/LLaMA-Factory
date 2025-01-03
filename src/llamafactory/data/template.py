@@ -357,7 +357,7 @@ def get_template_and_fix_tokenizer(tokenizer: "PreTrainedTokenizer", data_args: 
     r"""
     Gets chat template and fixes the tokenizer.
     """
-    import pdb; pdb.set_trace()
+    # import pdb; pdb.set_trace()
     if data_args.template is None:
         template = TEMPLATES["empty"]  # placeholder
     else:

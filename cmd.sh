@@ -1,3 +1,4 @@
+cd /afs/zengwang/projects/task_define_service/LLaMA-Factory
 python src/train.py \
   --stage sft \
   --do_train \
