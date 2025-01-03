@@ -644,6 +644,113 @@ class Qwen2vlPlugin(BasePlugin):
         return self._get_mm_inputs(images, videos, processor)
 
 
+class Qwen2vlStreamPlugin(BasePlugin):
+    @override
+    def _preprocess_image(self, image: "ImageObject", **kwargs) -> "ImageObject":
+        image = super()._preprocess_image(image, **kwargs)
+        if min(image.width, image.height) < 28:
+            width, height = max(image.width, 28), max(image.height, 28)
+            image = image.resize((width, height), resample=Image.NEAREST)
+
+        if image.width / image.height > 200:
+            width, height = image.height * 180, image.height
+            image = image.resize((width, height), resample=Image.NEAREST)
+
+        if image.height / image.width > 200:
+            width, height = image.width, image.width * 180
+            image = image.resize((width, height), resample=Image.NEAREST)
+
+        return image
+
+    @override
+    def _regularize_videos(self, videos: Sequence["VideoInput"], **kwargs) -> List[List["ImageObject"]]:
+        results = []
+        for video in videos:
+            container = av.open(video, "r")
+            video_stream = next(stream for stream in container.streams if stream.type == "video")
+            total_frames = video_stream.frames
+            sample_frames = self._get_video_sample_frames(video_stream, **kwargs)
+            sample_indices = np.linspace(0, total_frames - 1, sample_frames).astype(np.int32)
+            frames: List["ImageObject"] = []
+            container.seek(0)
+            for frame_idx, frame in enumerate(container.decode(video_stream)):
+                if frame_idx in sample_indices:
+                    frames.append(frame.to_image())
+
+            if len(frames) % 2 != 0:  # qwen2-vl requires even number of frames
+                frames.append(frames[-1])
+
+            frames = self._regularize_images(frames, **kwargs)
+            results.append(frames)
+
+        return results
+
+    @override
+    def process_messages(
+        self,
+        messages: Sequence[Dict[str, str]],
+        images: Sequence["ImageInput"],
+        videos: Sequence["VideoInput"],
+        processor: Optional["ProcessorMixin"],
+    ) -> List[Dict[str, str]]:
+        import pdb; pdb.set_trace()
+
+        self._validate_input(images, videos)
+        image_processor: "BaseImageProcessor" = getattr(processor, "image_processor")
+        merge_length: int = getattr(image_processor, "merge_size") ** 2
+        mm_inputs = self._get_mm_inputs(images, videos, processor)
+        image_grid_thw = mm_inputs.get("image_grid_thw", [])
+        video_grid_thw = mm_inputs.get("video_grid_thw", [])
+
+        num_image_tokens, num_video_tokens = 0, 0
+        messages = deepcopy(messages)
+        for message in messages:
+            content = message["content"]
+            while IMAGE_PLACEHOLDER in content:
+                if num_image_tokens >= len(image_grid_thw):
+                    raise ValueError(f"`len(images)` is less than the number of {IMAGE_PLACEHOLDER} tokens.")
+
+                image_seqlen = image_grid_thw[num_image_tokens].prod() // merge_length if self.expand_mm_tokens else 1
+                content = content.replace(
+                    IMAGE_PLACEHOLDER, f"<|vision_start|>{self.image_token * image_seqlen}<|vision_end|>", 1
+                )
+                num_image_tokens += 1
+
+            while VIDEO_PLACEHOLDER in content:
+                if num_video_tokens >= len(video_grid_thw):
+                    raise ValueError(f"`len(videos)` is less than the number of {VIDEO_PLACEHOLDER} tokens.")
+
+                video_seqlen = video_grid_thw[num_video_tokens].prod() // merge_length if self.expand_mm_tokens else 1
+                content = content.replace(
+                    VIDEO_PLACEHOLDER, f"<|vision_start|>{self.video_token * video_seqlen}<|vision_end|>", 1
+                )
+                num_video_tokens += 1
+
+            message["content"] = content
+
+        if len(images) != num_image_tokens:
+            raise ValueError(f"The number of images does not match the number of {IMAGE_PLACEHOLDER} tokens.")
+
+        if len(videos) != num_video_tokens:
+            raise ValueError(f"The number of videos does not match the number of {VIDEO_PLACEHOLDER} tokens.")
+
+        return messages
+
+    @override
+    def get_mm_inputs(
+        self,
+        images: Sequence["ImageInput"],
+        videos: Sequence["VideoInput"],
+        imglens: Sequence[int],
+        vidlens: Sequence[int],
+        batch_ids: Sequence[List[int]],
+        processor: Optional["ProcessorMixin"],
+    ) -> Dict[str, Union[List[int], "torch.Tensor"]]:
+        import pdb; pdb.set_trace()
+        self._validate_input(images, videos)
+        return self._get_mm_inputs(images, videos, processor)
+
+
 class VideoLlavaPlugin(BasePlugin):
     @override
     def process_messages(
@@ -796,6 +903,7 @@ PLUGINS = {
     "paligemma": PaliGemmaPlugin,
     "pixtral": PixtralPlugin,
     "qwen2_vl": Qwen2vlPlugin,
+    "qwen2_vl_stream": Qwen2vlStreamPlugin,
     "video_llava": VideoLlavaPlugin,
     "mllama": MllamaPlugin,
 }
