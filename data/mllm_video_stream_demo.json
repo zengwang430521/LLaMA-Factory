@@ -21,7 +21,7 @@
       "mllm_demo_data/1.mp4"
     ]
   },
-    {
+  {
     "messages": [
       {
         "content": "Why is this video funny?",
@@ -36,7 +36,44 @@
       {
         "content": "<video>",
         "role": "user",
+        "time": [0.0, 8.0]
+      },
+      {
+        "content": "Because a baby is reading, and he is so cute!",
+        "role": "assistant",
+        "time": [8.0, 8.0]
+      }
+    ],
+    "videos": [
+      "mllm_demo_data/1.mp4"
+    ]
+  },
+  {
+    "messages": [
+      {
+        "content": "Why is this video funny?",
+        "role": "user",
+        "time": [0.0, 0.0]
+      },
+      {
+        "content": "Because a baby is reading, and he is so cute!",
+        "role": "assistant",
+        "time": [2.0, 2.0]
+      },
+      {
+        "content": "Because a baby is reading, and he is so cute!",
+        "role": "assistant",
+        "time": [8.0, 8.0]
+      },
+      {
+        "content": "<video>",
+        "role": "user",
         "time": [0.0, 100000.0]
+      },
+      {
+        "content": "Because a baby is reading, and he is so cute!",
+        "role": "assistant",
+        "time": [100000.0, 100000.0]
       }
     ],
     "videos": [
