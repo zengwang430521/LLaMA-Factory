@@ -2,60 +2,45 @@
   {
     "messages": [
       {
-        "content": "<video>Why is this video funny?",
+        "content": "Why is this video funny?",
         "role": "user",
-        "time": 0.0
-      },
-      {
-        "content": "Because a baby is reading, and he is so cute!",
-        "role": "assistant",
-        "time": 2.0
+        "time": [0.0, 0.0]
       },
       {
         "content": "<video>",
         "role": "user",
-        "time": 2.0
+        "time": [0.0, 2.0]
       },
       {
         "content": "Because a baby is reading, and he is so cute!",
         "role": "assistant",
-        "time": 10000.0
+        "time": [2.0, 2.0]
       }
     ],
     "videos": [
       "mllm_demo_data/1.mp4"
     ]
   },
-  {
+    {
     "messages": [
       {
-        "content": "<video>",
+        "content": "Why is this video funny?",
         "role": "user",
-        "time": 0.0
+        "time": [0.0, 0.0]
       },
       {
-        "content": "<video>What's in the video?",
-        "role": "user",
-        "time": 1.0
-      },
-      {
-        "content": "A baby is playing in the living room.",
+        "content": "Because a baby is reading, and he is so cute!",
         "role": "assistant",
-        "time": 2.0
+        "time": [2.0, 2.0]
       },
       {
         "content": "<video>",
         "role": "user",
-        "time": 2.0
-      },
-      {
-        "content": "A baby is playing in the living room.",
-        "role": "assistant",
-        "time": 10000.0
+        "time": [0.0, 100000.0]
       }
     ],
     "videos": [
-      "mllm_demo_data/3.mp4"
+      "mllm_demo_data/1.mp4"
     ]
   }
 ]

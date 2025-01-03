@@ -663,18 +663,50 @@ class Qwen2vlStreamPlugin(BasePlugin):
         return image
 
     @override
-    def _regularize_videos(self, videos: Sequence["VideoInput"], **kwargs) -> List[List["ImageObject"]]:
+    def _get_video_sample_frames(self, video_stream: "Stream", **kwargs) -> int:
+        r"""
+        Computes video sample frames according to fps.
+        """
+        video_fps: float = kwargs.get("video_fps")
+        video_maxlen: int = kwargs.get("video_maxlen")
+        total_frames = video_stream.frames
+        sample_frames = float(video_stream.duration * video_stream.time_base) * video_fps
+        # sample_frames = min(total_frames, video_maxlen, sample_frames)
+        sample_frames = min(total_frames, sample_frames)
+        return math.floor(sample_frames)
+
+    @override
+    def _regularize_videos(
+            self,
+            videos: Sequence["VideoInput"],
+            video_time_segs: Sequence["List"],
+            **kwargs) -> List[List["ImageObject"]]:
+
         results = []
-        for video in videos:
+        frame_times = []
+        for video, time_seg in zip(videos, video_time_segs):
+            t_start, t_end = time_seg
             container = av.open(video, "r")
             video_stream = next(stream for stream in container.streams if stream.type == "video")
             total_frames = video_stream.frames
             sample_frames = self._get_video_sample_frames(video_stream, **kwargs)
             sample_indices = np.linspace(0, total_frames - 1, sample_frames).astype(np.int32)
+            sample_times = np.linspace(0, video_stream.duration * video_stream.time_base, sample_frames)
+
+            sample_indices_seg, sample_times_seg = [], []
+            for idx, t in zip(sample_indices, sample_times):
+                if t_start <= t <= t_end:
+                    sample_indices_seg.append(idx)
+                    sample_times_seg.append(t)
+            video_maxlen: int = kwargs.get("video_maxlen")
+            if len(sample_indices_seg) > video_maxlen:
+                sample_indices_seg = sample_indices_seg[-video_maxlen:]
+                sample_times_seg = sample_times_seg[-video_maxlen:]
+
             frames: List["ImageObject"] = []
             container.seek(0)
             for frame_idx, frame in enumerate(container.decode(video_stream)):
-                if frame_idx in sample_indices:
+                if frame_idx in sample_indices_seg:
                     frames.append(frame.to_image())
 
             if len(frames) % 2 != 0:  # qwen2-vl requires even number of frames
@@ -682,8 +714,61 @@ class Qwen2vlStreamPlugin(BasePlugin):
 
             frames = self._regularize_images(frames, **kwargs)
             results.append(frames)
+            frame_times.append(sample_times_seg)
 
-        return results
+        return results, frame_times
+
+    @override
+    def _get_mm_inputs(
+        self,
+        images: Sequence["ImageInput"],
+        videos: Sequence["VideoInput"],
+        processor: "ProcessorMixin",
+        video_time_segs: Sequence["List"],
+    ) -> Dict[str, "torch.Tensor"]:
+        r"""
+        Processes visual inputs.
+
+        Returns: (llava and paligemma)
+            pixel_values: tensor with shape (B, C, H, W)
+
+        Returns: (qwen2-vl)
+            pixel_values: tensor with shape (num_patches, patch_dim)
+            image_grid_thw: tensor with shape (num_images, 3), where the three numbers are time, width, height
+
+        It holds num_patches == torch.prod(image_grid_thw)
+        """
+        image_processor: "BaseImageProcessor" = getattr(processor, "image_processor")
+        video_processor: "BaseImageProcessor" = getattr(processor, "video_processor", image_processor)
+        input_dict = {"images": None}  # default key
+        if len(images) != 0:
+            images = self._regularize_images(
+                images,
+                image_resolution=getattr(processor, "image_resolution", 512 * 512),
+            )
+            input_dict["images"] = images
+
+        if len(videos) != 0:
+            videos, frame_times = self._regularize_videos(
+                videos,
+                video_time_segs=video_time_segs,
+                image_resolution=getattr(processor, "video_resolution", 128 * 128),
+                video_fps=getattr(processor, "video_fps", 2.0),
+                video_maxlen=getattr(processor, "video_maxlen", 64),
+            )
+            input_dict["videos"] = videos
+
+        mm_inputs = {}
+        if image_processor != video_processor:
+            if input_dict.get("images") is not None:
+                mm_inputs.update(image_processor(input_dict["images"], return_tensors="pt"))
+            if input_dict.get("videos") is not None:
+                mm_inputs.update(video_processor(input_dict["videos"], return_tensors="pt"))
+        elif input_dict.get("images") is not None or input_dict.get("videos") is not None:  # same processor (qwen2-vl)
+            mm_inputs.update(image_processor(**input_dict, return_tensors="pt"))
+
+        return mm_inputs
+
 
     @override
     def process_messages(
@@ -698,7 +783,16 @@ class Qwen2vlStreamPlugin(BasePlugin):
         self._validate_input(images, videos)
         image_processor: "BaseImageProcessor" = getattr(processor, "image_processor")
         merge_length: int = getattr(image_processor, "merge_size") ** 2
-        mm_inputs = self._get_mm_inputs(images, videos, processor)
+
+        # 判断视频应该怎么分段
+        video_time_segs = []
+        for message in messages:
+            content = message["content"]
+            if VIDEO_PLACEHOLDER in content:
+                time = message['time']
+                video_time_segs.append(time)
+
+        mm_inputs = self._get_mm_inputs(images, videos, processor, video_time_segs)
         image_grid_thw = mm_inputs.get("image_grid_thw", [])
         video_grid_thw = mm_inputs.get("video_grid_thw", [])
 
