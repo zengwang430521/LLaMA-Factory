@@ -261,22 +261,29 @@ def convert_sharegpt_stream(
     aligned_messages = []
     broken_data = False
 
+    # # stream 格式不严格按照user，assistant交错的方式组织，所以跳过验证
+    # for turn_idx, message in enumerate(messages):
+    #     if message[dataset_attr.role_tag] not in accept_tags[turn_idx % 2]:
+    #         logger.warning_rank0(f"Invalid role tag in {messages}.")
+    #         broken_data = True
+    #     aligned_messages.append(
+    #         {"role": tag_mapping[message[dataset_attr.role_tag]],
+    #          "content": message[dataset_attr.content_tag],
+    #          "time": message.get('time', None)}
+    #     )
+    # if (not dataset_attr.ranking and len(aligned_messages) % 2 != 0) or (
+    #     dataset_attr.ranking and len(aligned_messages) % 2 == 0
+    # ):
+    #     logger.warning_rank0(f"Invalid message count in {messages}.")
+    #     broken_data = True
+
+    # stream 数据存在1个问题多轮回答的形式，不严格按照user，assistant交错的方式组织，所以跳过验证
     for turn_idx, message in enumerate(messages):
-        # stream 格式不严格按照user，assistant交错的方式组织，所以跳过验证
-        # if message[dataset_attr.role_tag] not in accept_tags[turn_idx % 2]:
-        #     logger.warning_rank0(f"Invalid role tag in {messages}.")
-        #     broken_data = True
         aligned_messages.append(
             {"role": tag_mapping[message[dataset_attr.role_tag]],
              "content": message[dataset_attr.content_tag],
              "time": message.get('time', None)}
         )
-
-    if (not dataset_attr.ranking and len(aligned_messages) % 2 != 0) or (
-        dataset_attr.ranking and len(aligned_messages) % 2 == 0
-    ):
-        logger.warning_rank0(f"Invalid message count in {messages}.")
-        broken_data = True
 
     if dataset_attr.kto_tag and isinstance(example[dataset_attr.kto_tag], bool):  # kto example
         prompt = aligned_messages[:-1]
