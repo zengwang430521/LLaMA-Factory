@@ -261,9 +261,8 @@ def convert_sharegpt_stream(
     aligned_messages = []
     broken_data = False
 
-    # stream 格式不严格按照user，assistant交错的方式组织，所以跳过验证
-
     for turn_idx, message in enumerate(messages):
+        # stream 格式不严格按照user，assistant交错的方式组织，所以跳过验证
         # if message[dataset_attr.role_tag] not in accept_tags[turn_idx % 2]:
         #     logger.warning_rank0(f"Invalid role tag in {messages}.")
         #     broken_data = True
