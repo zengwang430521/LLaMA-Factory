@@ -235,7 +235,7 @@ def convert_sharegpt_stream(
     r"""
     Converts sharegpt format dataset to the standard format.
     """
-    # import pdb; pdb.set_trace()
+    import pdb; pdb.set_trace()
 
     tag_mapping = {
         dataset_attr.user_tag: Role.USER.value,
