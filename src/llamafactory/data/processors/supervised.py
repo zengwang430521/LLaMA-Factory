@@ -98,10 +98,12 @@ def preprocess_supervised_dataset(
     # build inputs with format `<bos> X Y <eos>` and labels with format `<ignore> ... <ignore> Y <eos>`
     # for multiturn examples, we only mask the prompt part in each prompt-response pair.
 
-    # import pdb; pdb.set_trace()
+    import pdb; pdb.set_trace()
 
     model_inputs = defaultdict(list)
     for i in range(len(examples["_prompt"])):
+        # stream 数据不进行验证
+
         if len(examples["_prompt"][i]) % 2 != 1 or len(examples["_response"][i]) != 1:
             logger.warning_rank0(
                 "Dropped invalid example: {}".format(examples["_prompt"][i] + examples["_response"][i])
