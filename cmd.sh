@@ -12,4 +12,4 @@ python src/train.py \
   --gradient_accumulation_steps 4 \
   --num_train_epochs 3 \
   --mask_history \
---new_special_tokens "<frame_end>"
+  --new_special_tokens <|frame_end|>

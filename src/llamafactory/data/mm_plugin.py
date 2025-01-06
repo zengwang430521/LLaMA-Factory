@@ -8,7 +8,7 @@ import torch
 from transformers.image_utils import get_image_size, to_numpy_array
 from typing_extensions import override
 
-from ..extras.constants import IGNORE_INDEX, IMAGE_PLACEHOLDER, VIDEO_PLACEHOLDER
+from ..extras.constants import IGNORE_INDEX, IMAGE_PLACEHOLDER, VIDEO_PLACEHOLDER, FRAME_RESPONSE_TOKEN, FRAME_END_TOKEN
 from ..extras.packages import is_pillow_available, is_pyav_available, is_transformers_version_greater_than
 
 
@@ -821,11 +821,16 @@ class Qwen2vlStreamPlugin(BasePlugin):
                     VIDEO_PLACEHOLDER, f"<|vision_start|>{self.video_token * video_seqlen}<|vision_end|>", 1
                 )
 
+                # TODO: 使用更规范的实现方式
                 # 用于判断哪些位置代表这一帧结束，用于进行stream_head的训练
+                # 借用一下现有的special token:
+                # <|video_pad|>: 普通的 video token
+                # <|im_end|>: 每一帧的最后一个 video token
+                # <|im_start|>: 回复前的最后一帧的最后1个 video token
                 frame_num, frame_seqlen = video_grid_thw[num_video_tokens][0], video_grid_thw[num_video_tokens][1:].prod()
-                video_content = (self.video_token * (frame_seqlen - 1) + '<frame_end>') * frame_num
+                video_content = ((self.video_token * (frame_seqlen - 1) + FRAME_END_TOKEN) * (frame_num - 1) +
+                                 (self.video_token * (frame_seqlen - 1) + FRAME_RESPONSE_TOKEN))
                 content_stream = content_stream.replace(VIDEO_PLACEHOLDER, f"<|vision_start|>{video_content}<|vision_end|>", 1)
-
                 num_video_tokens += 1
 
             message["content"] = content
