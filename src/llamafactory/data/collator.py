@@ -93,8 +93,9 @@ class MultiModalDataCollatorForSeq2Seq(DataCollatorForSeq2Seq):
     def __call__(self, features: Sequence[Dict[str, Any]]) -> Dict[str, "torch.Tensor"]:
         import pdb; pdb.set_trace()
         print("Debug: 读取视频/图片")
+        flag_stream = isinstance(self.template.mm_plugin, Qwen2vlStreamPlugin)
+
         batch_images, batch_videos, batch_imglens, batch_vidlens, batch_input_ids = [], [], [], [], []
-        batch_video_time_segs = []
         for feature in features:
             images = feature.pop("images", None) or []
             videos = feature.pop("videos", None) or []
@@ -103,8 +104,14 @@ class MultiModalDataCollatorForSeq2Seq(DataCollatorForSeq2Seq):
             batch_imglens.append(len(images))
             batch_vidlens.append(len(videos))
             batch_input_ids.append(feature["input_ids"])
-            video_time_segs = feature.pop("video_time_segs", None) or []
-            batch_video_time_segs.extend(video_time_segs)
+
+        if flag_stream:
+            batch_video_time_segs, batch_stream_labels = []
+            for feature in features:
+                video_time_segs = feature.pop("video_time_segs", None) or []
+                batch_video_time_segs.extend(video_time_segs)
+                stream_labels = feature.pop("stream_labels", None) or []
+                batch_stream_labels.append(stream_labels)
 
         if self.processor is not None and sum(batch_imglens) == 0:  # avoid process hanging in zero3/fsdp case
             fake_messages = [{"role": "user", "content": IMAGE_PLACEHOLDER}]
@@ -127,7 +134,7 @@ class MultiModalDataCollatorForSeq2Seq(DataCollatorForSeq2Seq):
             batch_imglens[0] = 1
             batch_input_ids[0] = features[0]["input_ids"]
 
-        if isinstance(self.template.mm_plugin, Qwen2vlStreamPlugin):
+        if flag_stream:
             mm_inputs = self.template.mm_plugin.get_mm_inputs(
                 batch_images, batch_videos, batch_imglens, batch_vidlens, batch_input_ids, self.processor, batch_video_time_segs
             )
@@ -142,6 +149,12 @@ class MultiModalDataCollatorForSeq2Seq(DataCollatorForSeq2Seq):
                 feature["token_type_ids"] = token_type_ids[i]
 
         features: Dict[str, "torch.Tensor"] = super().__call__(features)
+
+        # stream labels 需要特别处理
+        if flag_stream:
+            stream_features = [{'labels': stream_labels} for stream_labels in batch_stream_labels]
+            stream_features = super().__call__().call(stream_features)
+            features['stream_labels'] = stream_features['stream_labels']
 
         if self.model is not None and hasattr(self.model, "get_rope_index"):  # for qwen2vl mrope
             features["position_ids"], features["rope_deltas"] = self.model.get_rope_index(
