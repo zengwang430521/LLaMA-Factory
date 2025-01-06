@@ -158,6 +158,8 @@ class MultiModalDataCollatorForSeq2Seq(DataCollatorForSeq2Seq):
         if flag_stream:
             stream_features: Dict[str, "torch.Tensor"] = super().__call__(stream_features)
             features['stream_labels'] = stream_features['labels']
+            if features['stream_labels'].shape != features['labels'].shape:
+                print('error')
 
         if self.model is not None and hasattr(self.model, "get_rope_index"):  # for qwen2vl mrope
             features["position_ids"], features["rope_deltas"] = self.model.get_rope_index(
