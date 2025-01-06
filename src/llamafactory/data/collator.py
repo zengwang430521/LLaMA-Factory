@@ -105,14 +105,6 @@ class MultiModalDataCollatorForSeq2Seq(DataCollatorForSeq2Seq):
             batch_vidlens.append(len(videos))
             batch_input_ids.append(feature["input_ids"])
 
-        if flag_stream:
-            batch_video_time_segs = []
-            batch_stream_labels = []
-            for feature in features:
-                video_time_segs = feature.pop("video_time_segs", None) or []
-                batch_video_time_segs.extend(video_time_segs)
-                batch_stream_labels.append(feature.pop("stream_labels", None))
-
         if self.processor is not None and sum(batch_imglens) == 0:  # avoid process hanging in zero3/fsdp case
             fake_messages = [{"role": "user", "content": IMAGE_PLACEHOLDER}]
             fake_images = [Image.new("RGB", (64, 64), (255, 255, 255))]
@@ -125,16 +117,27 @@ class MultiModalDataCollatorForSeq2Seq(DataCollatorForSeq2Seq):
                 features[0]["input_ids"] = features[0]["input_ids"] + fake_input_ids
                 features[0]["attention_mask"] = features[0]["attention_mask"] + [0] * len(fake_input_ids)
                 features[0]["labels"] = features[0]["labels"] + [IGNORE_INDEX] * len(fake_input_ids)
+                if flag_stream:
+                    features[0]["stream_labels"] = features[0]["stream_labels"] + [IGNORE_INDEX] * len(fake_input_ids)
             else:
                 features[0]["input_ids"] = fake_input_ids + features[0]["input_ids"]
                 features[0]["attention_mask"] = [0] * len(fake_input_ids) + features[0]["attention_mask"]
                 features[0]["labels"] = [IGNORE_INDEX] * len(fake_input_ids) + features[0]["labels"]
+                if flag_stream:
+                    features[0]["stream_labels"] = [IGNORE_INDEX] * len(fake_input_ids) + features[0]["stream_labels"]
 
             batch_images = fake_images
             batch_imglens[0] = 1
             batch_input_ids[0] = features[0]["input_ids"]
 
         if flag_stream:
+            # stream labels 需要特别处理
+            batch_video_time_segs = []
+            batch_stream_labels = []
+            for feature in features:
+                video_time_segs = feature.pop("video_time_segs", None) or []
+                batch_video_time_segs.extend(video_time_segs)
+                batch_stream_labels.append(feature.pop("stream_labels", None))
             mm_inputs = self.template.mm_plugin.get_mm_inputs(
                 batch_images, batch_videos, batch_imglens, batch_vidlens, batch_input_ids, self.processor, batch_video_time_segs
             )
@@ -148,20 +151,18 @@ class MultiModalDataCollatorForSeq2Seq(DataCollatorForSeq2Seq):
             for i, feature in enumerate(features):
                 feature["token_type_ids"] = token_type_ids[i]
 
-        # stream labels 需要特别处理
         if flag_stream:
             stream_features = copy.deepcopy(features)
             for feature, stream_labels in zip(features, batch_stream_labels):
                 feature["labels"] = stream_labels
             stream_features: Dict[str, "torch.Tensor"] = super().__call__(stream_features)
-
-        features: Dict[str, "torch.Tensor"] = super().__call__(features)
-
-        if flag_stream:
+            features: Dict[str, "torch.Tensor"] = super().__call__(features)
             features['stream_labels'] = stream_features['labels']
             if features['stream_labels'].shape != features['labels'].shape:
                 import pdb; pdb.set_trace()
                 print('error')
+        else:
+            features: Dict[str, "torch.Tensor"] = super().__call__(features)
 
         if self.model is not None and hasattr(self.model, "get_rope_index"):  # for qwen2vl mrope
             features["position_ids"], features["rope_deltas"] = self.model.get_rope_index(

@@ -117,7 +117,6 @@ def _encode_supervised_stream_example(
 
     messages = template.mm_plugin.process_messages(prompt + response, images, videos, processor)
 
-
     input_ids, labels = template.mm_plugin.process_token_ids([], [], images, videos, tokenizer, processor)
 
     # TODO: format 应该放在别的地方，先暂时放在这里了
