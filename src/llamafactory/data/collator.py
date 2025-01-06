@@ -14,7 +14,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
+import copy
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Dict, Literal, Optional, Sequence
 
@@ -106,12 +106,16 @@ class MultiModalDataCollatorForSeq2Seq(DataCollatorForSeq2Seq):
             batch_input_ids.append(feature["input_ids"])
 
         if flag_stream:
-            batch_video_time_segs, batch_stream_labels = [], []
+            batch_video_time_segs = []
+            stream_features = []
             for feature in features:
                 video_time_segs = feature.pop("video_time_segs", None) or []
                 batch_video_time_segs.extend(video_time_segs)
-                stream_labels = feature.pop("stream_labels", None) or []
-                batch_stream_labels.append(stream_labels)
+                stream_feature = {
+                    "input_ids": copy.deepcopy(feature["input_ids"]),
+                    "stream_labels": feature.pop("stream_labels", None) or []
+                }
+                stream_features.append(stream_features)
 
         if self.processor is not None and sum(batch_imglens) == 0:  # avoid process hanging in zero3/fsdp case
             fake_messages = [{"role": "user", "content": IMAGE_PLACEHOLDER}]
@@ -152,7 +156,6 @@ class MultiModalDataCollatorForSeq2Seq(DataCollatorForSeq2Seq):
 
         # stream labels 需要特别处理
         if flag_stream:
-            stream_features = [{'labels': stream_labels} for stream_labels in batch_stream_labels]
             stream_features: Dict[str, "torch.Tensor"] = super().__call__(stream_features)
             features['stream_labels'] = stream_features['stream_labels']
 
