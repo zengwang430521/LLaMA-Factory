@@ -11,7 +11,7 @@ class Qwen2VLStreamConfig(Qwen2VLConfig):
     model_type = "qwen2_vl_stream"
 
     def __init__(self, stream_loss_factor=1.0, **kwargs):
-        super.__init__(**kwargs)
+        super().__init__(**kwargs)
         self.stream_loss_factor = stream_loss_factor
 
 
