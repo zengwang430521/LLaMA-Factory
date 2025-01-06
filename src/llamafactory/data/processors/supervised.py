@@ -111,6 +111,7 @@ def _encode_supervised_stream_example(
     # TODO: format 应该放在别的地方，先暂时放在这里了
     # TODO: 暂时采用粗暴的后截断，和LLAMA_FACTORY默认的截断方式不一致
     import pdb; pdb.set_trace()
+    print('Debug: 产生input_ids, labels, stream_labels')
     assert not template.efficient_eos
 
     system = system or template.default_system
@@ -174,9 +175,11 @@ def _encode_supervised_stream_example(
         else:
             raise NotImplementedError("Unexpected role: {}".format(message["role"]))
 
-    input_ids = input_ids[:cutoff_len]
-    labels = labels[:cutoff_len]
-    stream_labels = stream_labels[:cutoff_len]
+    assert len(input_ids) == len(labels) and len(input_ids) == len(stream_labels)
+    if cutoff_len > len(input_ids):
+        input_ids = input_ids[:cutoff_len]
+        labels = labels[:cutoff_len]
+        stream_labels = stream_labels[:cutoff_len]
 
     return input_ids, labels, stream_labels
 
