@@ -2,6 +2,7 @@ from transformers.models.qwen2_vl.modeling_qwen2_vl import *
 from transformers.models import *
 import torch.nn as nn
 from typing import Any, Dict, List, Optional, Tuple, Union
+from transformers.models.auto import modeling_auto, configuration_auto
 
 
 _CONFIG_FOR_DOC = "Qwen2VLConfig"
@@ -220,3 +221,7 @@ class Qwen2VLStream(Qwen2VLForConditionalGeneration):
             attentions=outputs.attentions,
             rope_deltas=rope_deltas,
         )
+
+
+configuration_auto.CONFIG_MAPPING_NAMES['qwen2_vl_stream'] = "Qwen2VLConfig"
+modeling_auto.MODEL_FOR_VISION_2_SEQ_MAPPING_NAMES['qwen2_vl_stream'] = "Qwen2VLStream"
