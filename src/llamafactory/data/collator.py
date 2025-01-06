@@ -113,7 +113,7 @@ class MultiModalDataCollatorForSeq2Seq(DataCollatorForSeq2Seq):
                 batch_video_time_segs.extend(video_time_segs)
                 stream_feature = {
                     "input_ids": copy.deepcopy(feature["input_ids"]),
-                    "stream_labels": feature.pop("stream_labels", None) or []
+                    "labels": feature.pop("stream_labels", None) or []
                 }
                 stream_features.append(stream_feature)
 
