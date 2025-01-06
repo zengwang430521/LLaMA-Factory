@@ -11,4 +11,5 @@ python src/train.py \
   --per_device_train_batch_size 2 \
   --gradient_accumulation_steps 4 \
   --num_train_epochs 3 \
-  --mask_history
+  --mask_history \
+--new_special_tokens "<frame_end>"
