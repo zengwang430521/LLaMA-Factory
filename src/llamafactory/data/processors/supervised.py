@@ -47,9 +47,9 @@ def _encode_supervised_example(
     mask_history: bool,
 ) -> Tuple[List[int], List[int]]:
     import pdb; pdb.set_trace()
-
     messages = template.mm_plugin.process_messages(prompt + response, images, videos, processor)
     input_ids, labels = template.mm_plugin.process_token_ids([], [], images, videos, tokenizer, processor)
+    import pdb; pdb.set_trace()
 
     # TODO: format 应该放在别的地方，先暂时放在这里了
     # TODO: 暂时采用粗暴的后截断，和LLAMA_FACTORY默认的截断方式不一致

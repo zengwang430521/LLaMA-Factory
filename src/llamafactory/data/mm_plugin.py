@@ -771,7 +771,6 @@ class Qwen2vlStreamPlugin(BasePlugin):
 
         return mm_inputs
 
-
     @override
     def process_messages(
         self,
@@ -802,6 +801,7 @@ class Qwen2vlStreamPlugin(BasePlugin):
         messages = deepcopy(messages)
         for message in messages:
             content = message["content"]
+            content_stream = message['content']
             while IMAGE_PLACEHOLDER in content:
                 if num_image_tokens >= len(image_grid_thw):
                     raise ValueError(f"`len(images)` is less than the number of {IMAGE_PLACEHOLDER} tokens.")
@@ -820,9 +820,16 @@ class Qwen2vlStreamPlugin(BasePlugin):
                 content = content.replace(
                     VIDEO_PLACEHOLDER, f"<|vision_start|>{self.video_token * video_seqlen}<|vision_end|>", 1
                 )
+
+                # 用于判断哪些位置代表这一帧结束，用于进行stream_head的训练
+                frame_num, frame_seqlen = video_grid_thw[num_video_tokens][0], video_grid_thw[num_video_tokens][1:].prod()
+                video_content = (self.video_token * (frame_seqlen - 1) + '<frame_end>') * frame_num
+                content_stream = content_stream.replace(VIDEO_PLACEHOLDER, f"<|vision_start|>{video_content}<|vision_end|>", 1)
+
                 num_video_tokens += 1
 
             message["content"] = content
+            message["content_stream"] = content_stream
 
         if len(images) != num_image_tokens:
             raise ValueError(f"The number of images does not match the number of {IMAGE_PLACEHOLDER} tokens.")
