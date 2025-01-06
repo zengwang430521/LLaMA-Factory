@@ -827,13 +827,15 @@ class Qwen2vlStreamPlugin(BasePlugin):
                 # <|video_pad|>: 普通的 video token
                 # <|im_end|>: 每一帧的最后一个 video token
                 # <|im_start|>: 回复前的最后一帧的最后1个 video token
-                import pdb; pdb.set_trace()
-                print('Debug: 设置content_stream')
+
+                # import pdb; pdb.set_trace()
+                # print('Debug: 设置content_stream')
                 frame_num = video_grid_thw[num_video_tokens][0]
                 frame_seqlen = video_grid_thw[num_video_tokens][1:].prod() // merge_length if self.expand_mm_tokens else 1
                 video_content = ((self.video_token * (frame_seqlen - 1) + FRAME_END_TOKEN) * (frame_num - 1) +
                                  (self.video_token * (frame_seqlen - 1) + FRAME_RESPONSE_TOKEN))
                 content_stream = content_stream.replace(VIDEO_PLACEHOLDER, f"<|vision_start|>{video_content}<|vision_end|>", 1)
+
                 num_video_tokens += 1
 
             message["content"] = content
