@@ -107,15 +107,11 @@ class MultiModalDataCollatorForSeq2Seq(DataCollatorForSeq2Seq):
 
         if flag_stream:
             batch_video_time_segs = []
-            stream_features = []
+            batch_stream_labels = []
             for feature in features:
                 video_time_segs = feature.pop("video_time_segs", None) or []
                 batch_video_time_segs.extend(video_time_segs)
-                stream_feature = {
-                    "input_ids": copy.deepcopy(feature["input_ids"]),
-                    "labels": feature.pop("stream_labels", None) or []
-                }
-                stream_features.append(stream_feature)
+                batch_stream_labels.append(feature.pop("stream_labels", None))
 
         if self.processor is not None and sum(batch_imglens) == 0:  # avoid process hanging in zero3/fsdp case
             fake_messages = [{"role": "user", "content": IMAGE_PLACEHOLDER}]
@@ -152,15 +148,20 @@ class MultiModalDataCollatorForSeq2Seq(DataCollatorForSeq2Seq):
             for i, feature in enumerate(features):
                 feature["token_type_ids"] = token_type_ids[i]
 
-        features: Dict[str, "torch.Tensor"] = super().__call__(features)
-
         # stream labels 需要特别处理
         if flag_stream:
+            stream_features = copy.deepcopy(features)
+            for feature, stream_labels in zip(features, batch_stream_labels):
+                feature["label"] = stream_labels
             stream_features: Dict[str, "torch.Tensor"] = super().__call__(stream_features)
+
+        features: Dict[str, "torch.Tensor"] = super().__call__(features)
+        if flag_stream:
             features['stream_labels'] = stream_features['labels']
             if features['stream_labels'].shape != features['labels'].shape:
                 import pdb; pdb.set_trace()
                 print('error')
+
 
         if self.model is not None and hasattr(self.model, "get_rope_index"):  # for qwen2vl mrope
             features["position_ids"], features["rope_deltas"] = self.model.get_rope_index(
