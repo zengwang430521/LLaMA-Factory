@@ -18,6 +18,7 @@ from typing import TYPE_CHECKING, Any, Dict, List, Optional, Sequence, Tuple
 from ...extras import logging
 from ...extras.constants import IGNORE_INDEX, FRAME_RESPONSE_TOKEN, FRAME_END_TOKEN
 from .processor_utils import greedy_knapsack, infer_seqlen
+from copy import deepcopy
 
 
 if TYPE_CHECKING:
@@ -122,13 +123,13 @@ def _encode_supervised_stream_example(
 
     for i, message in enumerate(messages):
         elements = []
-        elements_stream = []
         if i == 0:
             elements += template.format_prefix.apply()
             if system or tools:
                 tool_text = template.format_tools.apply(content=tools)[0] if tools else ""
                 elements += template.format_system.apply(content=(system + tool_text))
 
+        elements_stream = deepcopy(elements)
         if message["role"] in [Role.USER.value, Role.OBSERVATION.value]:
             if message["role"] == Role.USER.value:
                 elements += template.format_user.apply(content=message["content"], idx=str(i // 2))
