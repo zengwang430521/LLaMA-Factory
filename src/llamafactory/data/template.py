@@ -298,7 +298,7 @@ def _register_template(
     elif 'stream' in name:
         template_class = StreamTemplate
     else:
-        Template
+        template_class = Template
 
     default_slots = ["{{content}}"] if efficient_eos else ["{{content}}", {"eos_token"}]
     default_user_formatter = StringFormatter(slots=["{{content}}"])
