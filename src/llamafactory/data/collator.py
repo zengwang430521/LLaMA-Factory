@@ -106,7 +106,7 @@ class MultiModalDataCollatorForSeq2Seq(DataCollatorForSeq2Seq):
             batch_input_ids.append(feature["input_ids"])
 
         if flag_stream:
-            batch_video_time_segs, batch_stream_labels = []
+            batch_video_time_segs, batch_stream_labels = [], []
             for feature in features:
                 video_time_segs = feature.pop("video_time_segs", None) or []
                 batch_video_time_segs.extend(video_time_segs)
