@@ -104,7 +104,9 @@ def _encode_supervised_stream_example(
     mask_history: bool,
 ) -> Tuple[List[int], List[int]]:
 
-    # import pdb; pdb.set_trace()
+    import pdb; pdb.set_trace()
+    print('Debug: 产生input_ids, labels, stream_labels')
+
     messages = template.mm_plugin.process_messages(prompt + response, images, videos, processor)
     input_ids, labels = template.mm_plugin.process_token_ids([], [], images, videos, tokenizer, processor)
 
