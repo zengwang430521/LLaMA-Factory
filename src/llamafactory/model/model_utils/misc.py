@@ -38,6 +38,9 @@ def find_all_linear_modules(model: "PreTrainedModel", freeze_vision_tower: bool)
         forbidden_modules.add("multi_modal_projector")
     elif model_type == "qwen2_vl":
         forbidden_modules.add("merger")
+    elif model_type == "qwen2_vl_stream":
+        forbidden_modules.add("merger")
+        forbidden_modules.add("stream_head")
 
     if freeze_vision_tower:
         if model_type == "mllama":

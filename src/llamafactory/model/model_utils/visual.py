@@ -96,6 +96,8 @@ def autocast_projector_dtype(model: "PreTrainedModel", model_args: "ModelArgumen
             mm_projector: "torch.nn.Module" = getattr(model, "multi_modal_projector")
         elif model_type == "qwen2_vl":
             mm_projector: "torch.nn.Module" = getattr(getattr(model, "visual"), "merger")
+        elif model_type == "qwen2_vl_stream":
+            mm_projector: "torch.nn.Module" = getattr(getattr(model, "visual"), "merger")
         else:
             return
 
@@ -140,6 +142,12 @@ def get_forbidden_modules(config: "PretrainedConfig", finetuning_args: "Finetuni
     elif model_type == "qwen2_vl":
         if finetuning_args.train_mm_proj_only:
             forbidden_modules.update({"visual.patch_embed", "visual.blocks", "model", "lm_head"})
+        elif finetuning_args.freeze_vision_tower:
+            forbidden_modules.add("visual")
+
+    elif model_type == "qwen2_vl_stream":
+        if finetuning_args.train_mm_proj_only:
+            forbidden_modules.update({"visual.patch_embed", "visual.blocks", "model", "lm_head", "stream_head"})
         elif finetuning_args.freeze_vision_tower:
             forbidden_modules.add("visual")
 
@@ -196,10 +204,14 @@ def patch_target_modules(
             return "^(?!.*vision_model).*(?:{}).*".format("|".join(target_modules))
         elif model_type == "qwen2_vl":
             return "^(?!.*visual).*(?:{}).*".format("|".join(target_modules))
+        elif model_type == "qwen2_vl_stream":
+            return "^(?!.*visual).*(?:{}).*".format("|".join(target_modules))
         else:
             return target_modules
     else:
         if model_type == "qwen2_vl":
+            return "^(?!.*patch_embed).*(?:{}).*".format("|".join(target_modules))
+        elif model_type == "qwen2_vl_stream":
             return "^(?!.*patch_embed).*(?:{}).*".format("|".join(target_modules))
         elif vit_model_type == "pixtral":
             return "^(?!.*patch_conv).*(?:{}).*".format("|".join(target_modules))
