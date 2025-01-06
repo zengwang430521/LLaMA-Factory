@@ -153,6 +153,7 @@ def _encode_supervised_stream_example(
                     # stream_labels.append(0)             # 监督
                 else:
                     stream_labels.append(IGNORE_INDEX)
+            t = 0
 
         elif message["role"] == Role.ASSISTANT.value:
             prefix = ['<|im_start|>assistant\n']
