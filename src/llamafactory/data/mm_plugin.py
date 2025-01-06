@@ -779,7 +779,7 @@ class Qwen2vlStreamPlugin(BasePlugin):
         videos: Sequence["VideoInput"],
         processor: Optional["ProcessorMixin"],
     ) -> List[Dict[str, str]]:
-        import pdb; pdb.set_trace()
+        # import pdb; pdb.set_trace()
 
         self._validate_input(images, videos)
         image_processor: "BaseImageProcessor" = getattr(processor, "image_processor")
