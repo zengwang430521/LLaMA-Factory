@@ -156,6 +156,7 @@ class MultiModalDataCollatorForSeq2Seq(DataCollatorForSeq2Seq):
             stream_features: Dict[str, "torch.Tensor"] = super().__call__(stream_features)
 
         features: Dict[str, "torch.Tensor"] = super().__call__(features)
+
         if flag_stream:
             features['stream_labels'] = stream_features['labels']
             if features['stream_labels'].shape != features['labels'].shape:
