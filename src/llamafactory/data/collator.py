@@ -153,7 +153,7 @@ class MultiModalDataCollatorForSeq2Seq(DataCollatorForSeq2Seq):
         # stream labels 需要特别处理
         if flag_stream:
             stream_features = [{'labels': stream_labels} for stream_labels in batch_stream_labels]
-            stream_features = super().__call__().call(stream_features)
+            stream_features: Dict[str, "torch.Tensor"] = super().__call__(stream_features)
             features['stream_labels'] = stream_features['stream_labels']
 
         if self.model is not None and hasattr(self.model, "get_rope_index"):  # for qwen2vl mrope
