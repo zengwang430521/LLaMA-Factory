@@ -52,6 +52,8 @@ class Qwen2VLStreamOutput(ModelOutput):
 
 
 class Qwen2VLStream(Qwen2VLForConditionalGeneration):
+    config_class = Qwen2VLStreamConfig
+
     def __init__(self, config):
         super().__init__(config)
         self.stream_head = nn.Linear(config.hidden_size, 2, bias=False)
@@ -59,7 +61,7 @@ class Qwen2VLStream(Qwen2VLForConditionalGeneration):
         self.post_init()
 
     @add_start_docstrings_to_model_forward(QWEN2_VL_INPUTS_DOCSTRING)
-    @replace_return_docstrings(output_type=Qwen2VLCausalLMOutputWithPast, config_class=Qwen2VLStreamConfig)
+    @replace_return_docstrings(output_type=Qwen2VLCausalLMOutputWithPast, config_class=_CONFIG_FOR_DOC)
     def forward(
         self,
         input_ids: torch.LongTensor = None,
