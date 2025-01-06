@@ -6,6 +6,7 @@ python src/train.py \
   --model_name_or_path /afs/zengwang/ckpt/Stream-Qwen2-VL-7B-Instruct \
   --dataset mllm_video_stream_demo \
   --template qwen2_vl_stream \
+  --finetuning_type lora \
   --output_dir work_dirs/debug \
   --overwrite_cache \
   --overwrite_output_dir \

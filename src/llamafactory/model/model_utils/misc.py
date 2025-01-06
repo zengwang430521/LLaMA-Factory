@@ -44,6 +44,8 @@ def find_all_linear_modules(model: "PreTrainedModel", freeze_vision_tower: bool)
             forbidden_modules.add("vision_model")
         elif model_type == "qwen2_vl":
             forbidden_modules.add("visual")
+        elif model_type == "qwen2_vl_stream":
+            forbidden_modules.add("visual")
         else:
             forbidden_modules.add("vision_tower")
 
