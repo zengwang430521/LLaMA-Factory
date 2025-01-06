@@ -115,7 +115,7 @@ class MultiModalDataCollatorForSeq2Seq(DataCollatorForSeq2Seq):
                     "input_ids": copy.deepcopy(feature["input_ids"]),
                     "stream_labels": feature.pop("stream_labels", None) or []
                 }
-                stream_features.append(stream_features)
+                stream_features.append(stream_feature)
 
         if self.processor is not None and sum(batch_imglens) == 0:  # avoid process hanging in zero3/fsdp case
             fake_messages = [{"role": "user", "content": IMAGE_PLACEHOLDER}]
