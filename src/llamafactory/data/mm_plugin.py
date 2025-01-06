@@ -769,7 +769,6 @@ class Qwen2vlStreamPlugin(BasePlugin):
             if input_dict.get("videos") is not None:
                 mm_inputs['frame_times'] = [torch.FloatTensor(t[::2]) for t in frame_times]
 
-
         return mm_inputs
 
 

@@ -154,6 +154,52 @@ class Template:
 
 
 @dataclass
+class StreamTemplate(Template):
+    @override
+    def _encode(
+        self,
+        tokenizer: "PreTrainedTokenizer",
+        messages: Sequence[Dict[str, str]],
+        system: Optional[str],
+        tools: Optional[str],
+    ) -> List[List[int]]:
+        r"""
+        Encodes formatted inputs to pairs of token ids.
+        Turn 0: prefix + system + query        resp
+        Turn t: sep + query                    resp
+        """
+        system = system or self.default_system
+        encoded_messages = []
+        for i, message in enumerate(messages):
+            elements = []
+
+            if i == 0:
+                elements += self.format_prefix.apply()
+                if system or tools:
+                    tool_text = self.format_tools.apply(content=tools)[0] if tools else ""
+                    elements += self.format_system.apply(content=(system + tool_text))
+
+            # if i > 0 and i % 2 == 0:
+            #     elements += self.format_separator.apply()
+
+            if message["role"] == Role.USER.value:
+                elements += self.format_user.apply(content=message["content"], idx=str(i // 2))
+            elif message["role"] == Role.ASSISTANT.value:
+                elements += self.format_separator.apply()
+                elements += self.format_assistant.apply(content=message["content"])
+            elif message["role"] == Role.OBSERVATION.value:
+                elements += self.format_observation.apply(content=message["content"])
+            elif message["role"] == Role.FUNCTION.value:
+                elements += self.format_function.apply(content=message["content"])
+            else:
+                raise NotImplementedError("Unexpected role: {}".format(message["role"]))
+
+            encoded_messages.append(self._convert_elements_to_ids(tokenizer, elements))
+
+        return encoded_messages
+
+
+@dataclass
 class Llama2Template(Template):
     @override
     def _encode(
@@ -245,7 +291,15 @@ def _register_template(
     )
     ```
     """
-    template_class = Llama2Template if any(k in name for k in ("llama2", "mistral")) else Template
+    # template_class = Llama2Template if any(k in name for k in ("llama2", "mistral")) else Template
+
+    if any(k in name for k in ("llama2", "mistral")):
+        template_class = Llama2Template
+    elif 'stream' in name:
+        template_class = StreamTemplate
+    else:
+        Template
+
     default_slots = ["{{content}}"] if efficient_eos else ["{{content}}", {"eos_token"}]
     default_user_formatter = StringFormatter(slots=["{{content}}"])
     default_assistant_formatter = StringFormatter(slots=default_slots)
@@ -1104,8 +1158,9 @@ _register_template(
 
 _register_template(
     name="qwen2_vl_stream",
-    format_user=StringFormatter(slots=["<|im_start|>user\n{{content}}<|im_end|>\n<|im_start|>assistant\n"]),
+    format_user=StringFormatter(slots=["<|im_start|>user\n{{content}}<|im_end|>\n"]),
     format_system=StringFormatter(slots=["<|im_start|>system\n{{content}}<|im_end|>\n"]),
+    format_assistant=StringFormatter(slots=["<|im_start|>assistant\n{{content}}", "eos_token"]),
     format_function=FunctionFormatter(slots=["{{content}}", "<|im_end|>"], tool_format="qwen"),
     format_observation=StringFormatter(
         slots=["<|im_start|>user\n<tool_response>\n{{content}}\n</tool_response><|im_end|>\n<|im_start|>assistant\n"]

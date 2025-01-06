@@ -31,6 +31,7 @@ if TYPE_CHECKING:
 logger = logging.get_logger(__name__)
 
 
+from ..data_utils import Role
 def _encode_supervised_example(
     prompt: Sequence[Dict[str, str]],
     response: Sequence[Dict[str, str]],
@@ -46,44 +47,50 @@ def _encode_supervised_example(
     mask_history: bool,
 ) -> Tuple[List[int], List[int]]:
     import pdb; pdb.set_trace()
+
     messages = template.mm_plugin.process_messages(prompt + response, images, videos, processor)
     input_ids, labels = template.mm_plugin.process_token_ids([], [], images, videos, tokenizer, processor)
-    encoded_pairs = template.encode_multiturn(tokenizer, messages, system, tools)
-    total_length = len(input_ids) + (1 if template.efficient_eos else 0)
-    if mask_history:
-        encoded_pairs = encoded_pairs[::-1]  # high priority for last turns
 
-    for turn_idx, (source_ids, target_ids) in enumerate(encoded_pairs):
-        if total_length >= cutoff_len:
-            break
+    # TODO: format 应该放在别的地方，先暂时放在这里了
+    # TODO: 暂时采用粗暴的后截断，和LLAMA_FACTORY默认的截断方式不一致
+    assert not template.efficient_eos
 
-        source_len, target_len = infer_seqlen(len(source_ids), len(target_ids), cutoff_len - total_length)
-        source_ids = source_ids[:source_len]
-        target_ids = target_ids[:target_len]
-        total_length += source_len + target_len
+    system = system or template.default_system
+    for i, message in enumerate(messages):
+        elements = []
+        if i == 0:
+            elements += template.format_prefix.apply()
+            if system or tools:
+                tool_text = template.format_tools.apply(content=tools)[0] if tools else ""
+                elements += template.format_system.apply(content=(system + tool_text))
 
-        if train_on_prompt:
-            source_label = source_ids
-        elif template.efficient_eos:
-            source_label = [tokenizer.eos_token_id] + [IGNORE_INDEX] * (source_len - 1)
+        if message["role"] in [Role.USER.value, Role.OBSERVATION.value]:
+            if message["role"] == Role.USER.value:
+                elements += template.format_user.apply(content=message["content"], idx=str(i // 2))
+            elif message["role"] == Role.OBSERVATION.value:
+                elements += template.format_observation.apply(content=message["content"])
+            encode_elements = template._convert_elements_to_ids(tokenizer, elements)
+            input_ids += encode_elements
+            labels += [IGNORE_INDEX] * len(encode_elements)
+
+        if message["role"] == Role.ASSISTANT.value:
+            prefix = ['<|im_start|>assistant\n']
+            content = [message['content'], '<eos_token>']
+            encoded_prefix = template._convert_elements_to_ids(tokenizer, prefix)
+            encoded_content = template._convert_elements_to_ids(tokenizer, content)
+            input_ids += encoded_prefix + encoded_content
+            if mask_history and i < len(messages) - 1:
+                labels += [IGNORE_INDEX] * len(encoded_prefix + encoded_content)
+            else:
+                labels += [IGNORE_INDEX] * len(encoded_prefix) + encoded_content
+
+        elif message["role"] == Role.FUNCTION.value:
+            raise NotImplementedError("Not implemented role:{}".format(message["role"]))
         else:
-            source_label = [IGNORE_INDEX] * source_len
+            raise NotImplementedError("Unexpected role: {}".format(message["role"]))
 
-        if mask_history and turn_idx != 0:  # train on the last turn only
-            target_label = [IGNORE_INDEX] * target_len
-        else:
-            target_label = target_ids
-
-        if mask_history:  # reversed sequences
-            input_ids = source_ids + target_ids + input_ids
-            labels = source_label + target_label + labels
-        else:
-            input_ids += source_ids + target_ids
-            labels += source_label + target_label
-
-    if template.efficient_eos:
-        input_ids += [tokenizer.eos_token_id]
-        labels += [tokenizer.eos_token_id]
+    input_ids = input_ids[:cutoff_len]
+    labels = labels[:cutoff_len]
 
     return input_ids, labels
 
