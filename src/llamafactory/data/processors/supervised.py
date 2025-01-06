@@ -112,15 +112,15 @@ def _encode_supervised_stream_example(
     # TODO: 暂时采用粗暴的后截断，和LLAMA_FACTORY默认的截断方式不一致
     import pdb; pdb.set_trace()
     assert not template.efficient_eos
-    stream_labels = labels
 
     system = system or template.default_system
 
     # 用于stream_head回复时机的训练，
     video_pad_id = tokenizer.encode('<|video_pad|>')    # 普通的 video token
     frame_end_id = tokenizer.encode(FRAME_END_TOKEN)    # 每一帧的最后一个 video token
-    frame_response_id =tokenizer.encode(FRAME_RESPONSE_TOKEN)   # 回复前的最后一帧的最后1个 video token
+    frame_response_id = tokenizer.encode(FRAME_RESPONSE_TOKEN)   # 回复前的最后一帧的最后1个 video token
 
+    stream_labels = deepcopy(labels)
     for i, message in enumerate(messages):
         elements = []
         if i == 0:
