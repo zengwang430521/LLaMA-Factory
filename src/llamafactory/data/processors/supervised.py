@@ -16,7 +16,7 @@ from collections import defaultdict
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Sequence, Tuple
 
 from ...extras import logging
-from ...extras.constants import IGNORE_INDEX, FRAME_RESPONSE_TOKEN, FRAME_END_TOKEN
+from ...extras.constants import IGNORE_INDEX, FRAME_RESPONSE_TOKEN, FRAME_END_TOKEN, VIDEO_PLACEHOLDER
 from .processor_utils import greedy_knapsack, infer_seqlen
 from copy import deepcopy
 
@@ -107,7 +107,17 @@ def _encode_supervised_stream_example(
     import pdb; pdb.set_trace()
     print('Debug: 产生input_ids, labels, stream_labels')
 
+    # 判断视频应该怎么分段
+    video_time_segs = []
+    for message in prompt + response:
+        content = message["content"]
+        if VIDEO_PLACEHOLDER in content:
+            time = message['time']
+            video_time_segs.append(time)
+
     messages = template.mm_plugin.process_messages(prompt + response, images, videos, processor)
+
+
     input_ids, labels = template.mm_plugin.process_token_ids([], [], images, videos, tokenizer, processor)
 
     # TODO: format 应该放在别的地方，先暂时放在这里了
@@ -183,7 +193,7 @@ def _encode_supervised_stream_example(
         labels = labels[:cutoff_len]
         stream_labels = stream_labels[:cutoff_len]
 
-    return input_ids, labels, stream_labels
+    return input_ids, labels, stream_labels, video_time_segs
 
 
 def preprocess_supervised_dataset(
@@ -200,7 +210,7 @@ def preprocess_supervised_dataset(
     for i in range(len(examples["_prompt"])):
         if data_args.template == 'qwen2_vl_stream':
             # qwen2_vl_stream 对话数据不进行验证, 并且需要额外的stream_labels
-            input_ids, labels, stream_labels = _encode_supervised_stream_example(
+            input_ids, labels, stream_labels, video_time_segs = _encode_supervised_stream_example(
                 prompt=examples["_prompt"][i],
                 response=examples["_response"][i],
                 system=examples["_system"][i],
@@ -220,6 +230,8 @@ def preprocess_supervised_dataset(
             model_inputs["images"].append(examples["_images"][i])
             model_inputs["videos"].append(examples["_videos"][i])
             model_inputs["stream_labels"].append(stream_labels)
+            model_inputs["video_time_segs"].append(video_time_segs)
+
         else:
             if len(examples["_prompt"][i]) % 2 != 1 or len(examples["_response"][i]) != 1:
                 logger.warning_rank0(

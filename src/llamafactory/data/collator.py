@@ -103,7 +103,6 @@ class MultiModalDataCollatorForSeq2Seq(DataCollatorForSeq2Seq):
             batch_imglens.append(len(images))
             batch_vidlens.append(len(videos))
             batch_input_ids.append(feature["input_ids"])
-
             video_time_segs = feature.pop("video_time_segs", None) or []
             batch_video_time_segs.extend(video_time_segs)
 
