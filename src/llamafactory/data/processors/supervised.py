@@ -116,9 +116,9 @@ def _encode_supervised_stream_example(
     system = system or template.default_system
 
     # 用于stream_head回复时机的训练，
-    video_pad_id = tokenizer.encode('<|video_pad|>')    # 普通的 video token
-    frame_end_id = tokenizer.encode(FRAME_END_TOKEN)    # 每一帧的最后一个 video token
-    frame_response_id = tokenizer.encode(FRAME_RESPONSE_TOKEN)   # 回复前的最后一帧的最后1个 video token
+    video_pad_id = tokenizer.encode('<|video_pad|>')[0]    # 普通的 video token
+    frame_end_id = tokenizer.encode(FRAME_END_TOKEN)[0]    # 每一帧的最后一个 video token
+    frame_response_id = tokenizer.encode(FRAME_RESPONSE_TOKEN)[0]   # 回复前的最后一帧的最后1个 video token
 
     stream_labels = deepcopy(labels)
     for i, message in enumerate(messages):
