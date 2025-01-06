@@ -858,10 +858,11 @@ class Qwen2vlStreamPlugin(BasePlugin):
         vidlens: Sequence[int],
         batch_ids: Sequence[List[int]],
         processor: Optional["ProcessorMixin"],
+        video_time_segs: Sequence["List"],
     ) -> Dict[str, Union[List[int], "torch.Tensor"]]:
         # import pdb; pdb.set_trace()
         self._validate_input(images, videos)
-        return self._get_mm_inputs(images, videos, processor)
+        return self._get_mm_inputs(images, videos, processor, video_time_segs)
 
 
 class VideoLlavaPlugin(BasePlugin):

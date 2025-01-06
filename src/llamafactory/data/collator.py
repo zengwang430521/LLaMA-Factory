@@ -24,7 +24,7 @@ from transformers import DataCollatorForSeq2Seq
 
 from ..extras.constants import IGNORE_INDEX, IMAGE_PLACEHOLDER
 from ..extras.packages import is_pillow_available
-
+from .mm_plugin import Qwen2vlStreamPlugin
 
 if is_pillow_available():
     from PIL import Image
@@ -94,6 +94,7 @@ class MultiModalDataCollatorForSeq2Seq(DataCollatorForSeq2Seq):
         import pdb; pdb.set_trace()
         print("Debug: 读取视频/图片")
         batch_images, batch_videos, batch_imglens, batch_vidlens, batch_input_ids = [], [], [], [], []
+        batch_video_time_segs = []
         for feature in features:
             images = feature.pop("images", None) or []
             videos = feature.pop("videos", None) or []
@@ -102,6 +103,9 @@ class MultiModalDataCollatorForSeq2Seq(DataCollatorForSeq2Seq):
             batch_imglens.append(len(images))
             batch_vidlens.append(len(videos))
             batch_input_ids.append(feature["input_ids"])
+
+            video_time_segs = feature.pop("video_time_segs", None) or []
+            batch_video_time_segs.extend(video_time_segs)
 
         if self.processor is not None and sum(batch_imglens) == 0:  # avoid process hanging in zero3/fsdp case
             fake_messages = [{"role": "user", "content": IMAGE_PLACEHOLDER}]
@@ -124,9 +128,15 @@ class MultiModalDataCollatorForSeq2Seq(DataCollatorForSeq2Seq):
             batch_imglens[0] = 1
             batch_input_ids[0] = features[0]["input_ids"]
 
-        mm_inputs = self.template.mm_plugin.get_mm_inputs(
-            batch_images, batch_videos, batch_imglens, batch_vidlens, batch_input_ids, self.processor
-        )
+        if isinstance(self.template.mm_plugin, Qwen2vlStreamPlugin):
+            mm_inputs = self.template.mm_plugin.get_mm_inputs(
+                batch_images, batch_videos, batch_imglens, batch_vidlens, batch_input_ids, self.processor, batch_video_time_segs
+            )
+        else:
+            mm_inputs = self.template.mm_plugin.get_mm_inputs(
+                batch_images, batch_videos, batch_imglens, batch_vidlens, batch_input_ids, self.processor
+            )
+
         if "token_type_ids" in mm_inputs:
             token_type_ids = mm_inputs.pop("token_type_ids")
             for i, feature in enumerate(features):
