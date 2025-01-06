@@ -2,7 +2,7 @@ cd /afs/zengwang/projects/task_define_service/LLaMA-Factory
 python src/train.py \
   --stage sft \
   --do_train \
-  --model_name_or_path /afs/zengwang/ckpt/Qwen2-VL-7B-Instruct \
+  --model_name_or_path /afs/zengwang/ckpt/Stream-Qwen2-VL-7B-Instruct \
   --dataset mllm_video_stream_demo \
   --template qwen2_vl_stream \
   --output_dir work_dirs/debug \

@@ -859,7 +859,7 @@ class Qwen2vlStreamPlugin(BasePlugin):
         batch_ids: Sequence[List[int]],
         processor: Optional["ProcessorMixin"],
     ) -> Dict[str, Union[List[int], "torch.Tensor"]]:
-        import pdb; pdb.set_trace()
+        # import pdb; pdb.set_trace()
         self._validate_input(images, videos)
         return self._get_mm_inputs(images, videos, processor)
 

@@ -2,10 +2,13 @@ from transformers.models.qwen2_vl.modeling_qwen2_vl import *
 from transformers.models import *
 import torch.nn as nn
 from typing import Any, Dict, List, Optional, Tuple, Union
-from transformers.models.auto import modeling_auto, configuration_auto
-
+from transformers.models.auto import AutoModelForVision2Seq, AutoConfig
 
 _CONFIG_FOR_DOC = "Qwen2VLConfig"
+
+
+class Qwen2VLStreamConfig(Qwen2VLConfig):
+    model_type = "qwen2_vl_stream"
 
 
 @dataclass
@@ -116,6 +119,9 @@ class Qwen2VLStream(Qwen2VLForConditionalGeneration):
         "The image shows a street scene with a red stop sign in the foreground. In the background, there is a large red gate with Chinese characters ..."
         ```"""
 
+        import pdb; pdb.set_trace()
+        print('Debug: 模型forward')
+
         output_attentions = output_attentions if output_attentions is not None else self.config.output_attentions
         output_hidden_states = (
             output_hidden_states if output_hidden_states is not None else self.config.output_hidden_states
@@ -223,5 +229,6 @@ class Qwen2VLStream(Qwen2VLForConditionalGeneration):
         )
 
 
-configuration_auto.CONFIG_MAPPING_NAMES['qwen2_vl_stream'] = "Qwen2VLConfig"
-modeling_auto.MODEL_FOR_VISION_2_SEQ_MAPPING_NAMES['qwen2_vl_stream'] = "Qwen2VLStream"
+AutoConfig.register('qwen2_vl_stream', Qwen2VLStreamConfig)
+AutoModelForVision2Seq.register(Qwen2VLStreamConfig, Qwen2VLStream)
+
