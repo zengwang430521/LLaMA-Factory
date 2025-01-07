@@ -68,6 +68,37 @@
     }
   },
 
+  "MMDuetIT_dvc_stream": {
+    "file_name": "processed/MMDuetIT/dvc_train-human_anno-0.25_0.5_earlier.json",
+    "formatting": "sharegpt_stream",
+    "columns": {
+      "messages": "messages",
+      "videos": "videos"
+    },
+    "tags": {
+      "role_tag": "role",
+      "content_tag": "content",
+      "user_tag": "user",
+      "assistant_tag": "assistant"
+    }
+  },
+
+  "MMDuetIT_magqa_stream": {
+    "file_name": "processed/MMDuetIT/magqa_train-0.25_0.5-earlier.json",
+    "formatting": "sharegpt_stream",
+    "columns": {
+      "messages": "messages",
+      "videos": "videos"
+    },
+    "tags": {
+      "role_tag": "role",
+      "content_tag": "content",
+      "user_tag": "user",
+      "assistant_tag": "assistant"
+    }
+  },
+
+
   "alpaca_en": {
     "hf_hub_url": "llamafactory/alpaca_en",
     "ms_hub_url": "llamafactory/alpaca_en",
