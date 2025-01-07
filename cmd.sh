@@ -16,8 +16,7 @@ python src/train.py \
   --freeze_vision_tower \
   --finetuning_type freeze \
   --freeze_trainable_layers 0 \
-  --freeze_extra_modules stream_head \
-  --train_from_scratch
+  --freeze_extra_modules stream_head
 
 
 
