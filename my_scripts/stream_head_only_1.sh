@@ -16,7 +16,7 @@ DISTRIBUTED_ARGS="
 echo "DISTRIBUTED_ARGS:$DISTRIBUTED_ARGS"
 
 torchrun $DISTRIBUTED_ARGS src/train.py \
-    --deepspeed examples/deepspeed/ds_z3_config_v2.json \
+    --deepspeed examples/deepspeed/ds_z3_offload_config.json \
     --stage sft \
     --do_train \
     --warmup_steps 100 \
@@ -29,9 +29,8 @@ torchrun $DISTRIBUTED_ARGS src/train.py \
     --template qwen2_vl_stream \
     --overwrite_cache \
     --overwrite_output_dir \
-    --preprocessing_num_workers 16 \
     --per_device_train_batch_size 1 \
-    --gradient_accumulation_steps 8 \
+    --gradient_accumulation_steps 32 \
     --mask_history \
     --freeze_vision_tower \
     --finetuning_type freeze \
