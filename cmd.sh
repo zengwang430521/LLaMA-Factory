@@ -16,14 +16,13 @@ python src/train.py \
   --finetuning_type freeze \
   --freeze_trainable_layers 0 \
   --freeze_extra_modules stream_head \
-  --video_resolution 147456 \
+  --video_resolution 65536 \
   --video_fps 2 \
   --video_maxlen 64 \
-  --cutoff_len 8192 \
-  --dataset MMDuetIT_dvc_stream,MMDuetIT_magqa_stream  \
-  --image_dir /afs/zengwang/projects/task_define_service/data/shot2story-videos_release_134k \
+  --cutoff_len 4096 \
+  --dataset mllm_video_stream_demo  \
   --num_train_epochs 1 \
-  --output_dir work_dirs/stream_head_only_1
+  --output_dir work_dirs/debug
 
 
 

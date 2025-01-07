@@ -846,7 +846,7 @@ class Qwen2vlStreamPlugin(BasePlugin):
                 # image_processor 过程
                 grid_thw = _process_images_shape(len(sample_frame_shapes), frame_width, frame_height, image_processor)
                 video_grid_thw.append(torch.tensor(grid_thw))
-                frame_times.append(frame_times[::2])
+                frame_times.append(sample_times_seg[::2])
             return video_grid_thw, frame_times
 
         def _regularize_images_shape(image_shapes, image_resolution):
@@ -883,8 +883,9 @@ class Qwen2vlStreamPlugin(BasePlugin):
             grid_h, grid_w = resized_height // image_processor.patch_size, resized_width // image_processor.patch_size
             return grid_t, grid_h, grid_w
 
-        mm_inputs["videos"] = videos
-        mm_inputs["video_grid_thw"] = get_video_grid_thw()
+        video_grid_thw, frame_times = get_video_grid_thw()
+        mm_inputs["video_grid_thw"] = video_grid_thw
+        mm_inputs["frame_times"] = frame_times
         return mm_inputs
 
 
