@@ -1,0 +1,1 @@
+from transformers.models.qwen2_vl import Qwen2VLImageProcessor
