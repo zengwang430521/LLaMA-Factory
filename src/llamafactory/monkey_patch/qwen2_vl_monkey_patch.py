@@ -61,7 +61,7 @@ class Qwen2VLStream(Qwen2VLForConditionalGeneration):
 
     def __init__(self, config):
         super().__init__(config)
-        self.stream_head = nn.Linear(config.hidden_size, 1, bias=False)     # 二分类，回复/不回复
+        self.stream_head = nn.Linear(config.hidden_size, 2, bias=False)     # 二分类，回复/不回复
         self.stream_loss_factor = config.stream_loss_factor
         self.post_init()
 
@@ -212,19 +212,15 @@ class Qwen2VLStream(Qwen2VLForConditionalGeneration):
         stream_logits = self.stream_head(hidden_states)
         if stream_labels is not None:
             # stream label 不需要做shift
-            # loss_fct = CrossEntropyLoss()
-            loss_fct_stream = BCELoss()
-
             # Upcast to float if we need to compute the loss to avoid potential precision issues
             stream_logits = stream_logits.float()
-            stream_scores = nn.functional.sigmoid(stream_logits)
-
+            loss_fct_stream = CrossEntropyLoss()
             # Flatten the tokens
-            stream_scores = stream_scores.view(-1)
-            stream_labels = stream_labels.view(-1).float()
+            stream_logits = stream_logits.view(-1, 2)
+            stream_labels = stream_labels.view(-1)
             # Enable model parallelism
-            stream_labels = stream_labels.to(stream_scores.device)
-            stream_loss = loss_fct_stream(stream_scores, stream_labels)
+            stream_labels = stream_labels.to(stream_logits.device)
+            stream_loss = loss_fct_stream(stream_logits, stream_labels)
             loss += stream_loss * self.stream_loss_factor
 
         if not return_dict:
