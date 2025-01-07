@@ -126,8 +126,8 @@ class Qwen2VLStream(Qwen2VLForConditionalGeneration):
         "The image shows a street scene with a red stop sign in the foreground. In the background, there is a large red gate with Chinese characters ..."
         ```"""
 
-        import pdb; pdb.set_trace()
-        print('Debug: 模型forward')
+        # import pdb; pdb.set_trace()
+        # print('Debug: 模型forward')
 
         output_attentions = output_attentions if output_attentions is not None else self.config.output_attentions
         output_hidden_states = (
