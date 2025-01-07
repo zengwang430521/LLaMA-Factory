@@ -129,6 +129,9 @@ def load_model(
     r"""
     Loads pretrained model.
     """
+    import pdb; pdb.set_trace()
+    print('Debug: 加载模型')
+
     init_kwargs = _get_init_kwargs(model_args)
     config = load_config(model_args)
     patch_config(config, tokenizer, model_args, init_kwargs, is_trainable)

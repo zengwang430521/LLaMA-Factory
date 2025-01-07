@@ -6,12 +6,16 @@ python src/train.py \
   --model_name_or_path /afs/zengwang/ckpt/Stream-Qwen2-VL-7B-Instruct \
   --dataset mllm_video_stream_demo \
   --template qwen2_vl_stream \
-  --finetuning_type lora \
   --output_dir work_dirs/debug \
   --overwrite_cache \
   --overwrite_output_dir \
   --per_device_train_batch_size 2 \
   --gradient_accumulation_steps 4 \
   --num_train_epochs 3 \
-  --mask_history
+  --mask_history \
+  --freeze_vision_tower \
+  --finetuning_type freeze \
+  --freeze_trainable_layers 0 \
+  --freeze_extra_modules lm_head,stream_head
+
 
