@@ -3,6 +3,7 @@ from transformers.models import *
 import torch.nn as nn
 from typing import Any, Dict, List, Optional, Tuple, Union
 from transformers.models.auto import AutoModelForVision2Seq, AutoConfig
+from torch.nn import BCELoss
 
 _CONFIG_FOR_DOC = "Qwen2VLConfig"
 
@@ -60,7 +61,7 @@ class Qwen2VLStream(Qwen2VLForConditionalGeneration):
 
     def __init__(self, config):
         super().__init__(config)
-        self.stream_head = nn.Linear(config.hidden_size, 2, bias=False)
+        self.stream_head = nn.Linear(config.hidden_size, 1, bias=False)     # 二分类，回复/不回复
         self.stream_loss_factor = config.stream_loss_factor
         self.post_init()
 
@@ -125,8 +126,8 @@ class Qwen2VLStream(Qwen2VLForConditionalGeneration):
         "The image shows a street scene with a red stop sign in the foreground. In the background, there is a large red gate with Chinese characters ..."
         ```"""
 
-        # import pdb; pdb.set_trace()
-        # print('Debug: 模型forward')
+        import pdb; pdb.set_trace()
+        print('Debug: 模型forward')
 
         output_attentions = output_attentions if output_attentions is not None else self.config.output_attentions
         output_hidden_states = (
@@ -208,16 +209,18 @@ class Qwen2VLStream(Qwen2VLForConditionalGeneration):
         # stream head
         stream_logits = self.stream_head(hidden_states)
         if stream_labels is not None:
+            # stream label 不需要做shift
+
             # Upcast to float if we need to compute the loss to avoid potential precision issues
             stream_logits = stream_logits.float()
-            # stream 不需要做shift
+            # loss_fct = CrossEntropyLoss()
+            loss_fct_stream = BCELoss()
             # Flatten the tokens
-            loss_fct = CrossEntropyLoss()
             stream_logits = stream_logits.view(-1, 2)
             stream_labels = stream_labels.view(-1)
             # Enable model parallelism
             stream_labels = stream_labels.to(stream_logits.device)
-            stream_loss = loss_fct(stream_logits, stream_labels)
+            stream_loss = loss_fct_stream(stream_logits, stream_labels)
             loss += stream_loss * self.stream_loss_factor
 
         if not return_dict:
