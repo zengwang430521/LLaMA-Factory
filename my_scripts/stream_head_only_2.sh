@@ -16,7 +16,7 @@ DISTRIBUTED_ARGS="
 echo "DISTRIBUTED_ARGS:$DISTRIBUTED_ARGS"
 
 torchrun $DISTRIBUTED_ARGS src/train.py \
-    --deepspeed examples/deepspeed/ds_z3_config_v2.json \
+    --deepspeed examples/deepspeed/ds_z3_config.json \
     --stage sft \
     --do_train \
     --warmup_steps 100 \
@@ -42,7 +42,7 @@ torchrun $DISTRIBUTED_ARGS src/train.py \
     --video_fps 2 \
     --video_maxlen 64 \
     --cutoff_len 4096 \
-    --dataset MMDuetIT_dvc_stream \
+    --dataset MMDuetIT_dvc_stream,MMDuetIT_magqa_stream  \
     --image_dir /afs/zengwang/projects/task_define_service/data/shot2story-videos_release_134k \
     --num_train_epochs 1 \
     --save_steps 10000 \

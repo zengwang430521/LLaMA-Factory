@@ -39,13 +39,3 @@ for src_item in tqdm(src_data):
 
 with open(tar_path, 'w', encoding='utf-8') as f:
     json.dump(tar_data, f, ensure_ascii=False, indent=2)
-
-
-
-
-
-
-
-
-
-t = 0
