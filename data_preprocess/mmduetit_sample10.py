@@ -20,7 +20,7 @@ instructions = [
 
 
 src_path = '/home/SENSETIME/zengwang/myprojects/task_define_service/data/MMDuetIT/shot2story/annotations/dvc_train-human_anno-0.25_0.5_earlier.json'
-tar_path = '/home/SENSETIME/zengwang/myprojects/task_define_service/data/MMDuetIT/shot2story/annotations/processed/dvc_train-human_anno-0.25_0.5_earlier_sample10.json'
+tar_path = '/home/SENSETIME/zengwang/myprojects/task_define_service/data/MMDuetIT/shot2story/annotations/processed/dvc_train-human_anno-0.25_0.5_earlier_sample100.json'
 os.makedirs(os.path.dirname(tar_path), exist_ok=True)
 
 with open(src_path, 'r') as f:
@@ -30,7 +30,7 @@ tar_data = []
 n = -1
 for video_file in tqdm(src_data.keys()):
     n += 1
-    if n % 10 != 0:
+    if n % 100 != 0:
         continue
     for _, conversations in src_data[video_file].items():
         instruction = random.choice(instructions)

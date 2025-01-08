@@ -9,6 +9,7 @@ python src/train.py \
   --template qwen2_vl_stream \
   --overwrite_cache \
   --overwrite_output_dir \
+  --bf16 \
   --per_device_train_batch_size 2 \
   --gradient_accumulation_steps 4 \
   --mask_history \
@@ -20,7 +21,8 @@ python src/train.py \
   --video_fps 2 \
   --video_maxlen 64 \
   --cutoff_len 4096 \
-  --dataset mllm_video_stream_demo  \
+  --dataset MMDuetIT_dvc_stream \
+  --image_dir /afs/zengwang/projects/task_define_service/data/shot2story-videos_release_134k \
   --num_train_epochs 1 \
   --output_dir work_dirs/debug
 
