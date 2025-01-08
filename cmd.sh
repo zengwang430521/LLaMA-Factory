@@ -1,3 +1,4 @@
+rm -rf ~/.ssh
 ln -s /afs/zengwang/.ssh ~/.ssh
 
 cd /afs/zengwang/projects/task_define_service/LLaMA-Factory
