@@ -30,19 +30,20 @@ torchrun $DISTRIBUTED_ARGS src/train.py \
     --overwrite_cache \
     --overwrite_output_dir \
     --logging_steps 1 \
+    --ddp_timeout 9000  \
     --per_device_train_batch_size 1 \
-    --gradient_accumulation_steps 8 \
+    --gradient_accumulation_steps 16 \
     --mask_history \
     --freeze_vision_tower \
     --finetuning_type freeze \
     --freeze_trainable_layers 0 \
     --freeze_extra_modules stream_head \
-    --bf16 \
+    --fp16 \
     --video_resolution 65536 \
     --video_fps 2 \
     --video_maxlen 64 \
     --cutoff_len 4096 \
-    --dataset MMDuetIT_dvc_stream_sample100 \
+    --dataset MMDuetIT_dvc_stream,MMDuetIT_magqa_stream \
     --image_dir /afs/zengwang/projects/task_define_service/data/shot2story-videos_release_134k \
     --num_train_epochs 1 \
     --save_steps 10000 \
