@@ -38,7 +38,7 @@ torchrun $DISTRIBUTED_ARGS src/train.py \
     --finetuning_type freeze \
     --freeze_trainable_layers 0 \
     --freeze_extra_modules stream_head \
-    --fp16 \
+    --bf16 \
     --video_resolution 65536 \
     --video_fps 2 \
     --video_maxlen 64 \
