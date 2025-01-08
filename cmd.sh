@@ -11,8 +11,8 @@ python src/train.py \
   --overwrite_cache \
   --overwrite_output_dir \
   --bf16 \
-  --per_device_train_batch_size 2 \
-  --gradient_accumulation_steps 4 \
+  --per_device_train_batch_size 1 \
+  --gradient_accumulation_steps 1 \
   --mask_history \
   --freeze_vision_tower \
   --finetuning_type freeze \
@@ -23,12 +23,15 @@ python src/train.py \
   --video_maxlen 64 \
   --cutoff_len 4096 \
   --num_train_epochs 1 \
-  --dataset mllm_video_stream_demo \
-  --output_dir work_dirs/debug
-
-
+  --output_dir work_dirs/debug \
   --dataset MMDuetIT_dvc_stream_sample100 \
-  --image_dir /afs/zengwang/projects/task_define_service/data/shot2story-videos_release_134k \
+  --image_dir /afs/zengwang/projects/task_define_service/data/shot2story-videos_release_134k
+
+
+  --dataset mllm_video_stream_demo
+
+
+
 
 
 
