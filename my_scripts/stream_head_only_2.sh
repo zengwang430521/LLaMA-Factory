@@ -36,7 +36,7 @@ torchrun $DISTRIBUTED_ARGS src/train.py \
     --mask_history \
     --freeze_vision_tower \
     --finetuning_type freeze \
-    --freeze_trainable_layers 0 \
+    --freeze_trainable_layers 1 \
     --freeze_extra_modules stream_head \
     --video_resolution 65536 \
     --video_fps 2 \
