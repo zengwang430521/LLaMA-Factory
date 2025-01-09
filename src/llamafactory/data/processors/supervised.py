@@ -121,8 +121,8 @@ def _encode_supervised_stream_example(
 
     # TODO: format 应该放在别的地方，先暂时放在这里了
     # TODO: 暂时采用粗暴的后截断，和LLAMA_FACTORY默认的截断方式不一致
-    import pdb; pdb.set_trace()
-    print('Debug: 产生input_ids, labels, stream_labels')
+    # import pdb; pdb.set_trace()
+    # print('Debug: 产生input_ids, labels, stream_labels')
     assert not template.efficient_eos
 
     system = system or template.default_system
@@ -132,7 +132,7 @@ def _encode_supervised_stream_example(
     frame_end_id = tokenizer.encode(FRAME_END_TOKEN)[0]    # 每一帧的最后一个 video token
     frame_response_id = tokenizer.encode(FRAME_RESPONSE_TOKEN)[0]   # 回复前的最后一帧的最后1个 video token
 
-    stream_labels = deepcopy(labels)
+    stream_labels = [IGNORE_INDEX] * len(labels)
     for i, message in enumerate(messages):
         elements = []
         if i == 0:
