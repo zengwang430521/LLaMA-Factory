@@ -91,8 +91,8 @@ class MultiModalDataCollatorForSeq2Seq(DataCollatorForSeq2Seq):
             raise ValueError("Template is required for MultiModalDataCollator.")
 
     def __call__(self, features: Sequence[Dict[str, Any]]) -> Dict[str, "torch.Tensor"]:
-        import pdb; pdb.set_trace()
-        print("Debug: 读取视频/图片")
+        # import pdb; pdb.set_trace()
+        # print("Debug: 读取视频/图片")
         flag_stream = isinstance(self.template.mm_plugin, Qwen2vlStreamPlugin)
 
         batch_images, batch_videos, batch_imglens, batch_vidlens, batch_input_ids = [], [], [], [], []
