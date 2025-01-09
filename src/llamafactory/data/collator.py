@@ -153,11 +153,14 @@ class MultiModalDataCollatorForSeq2Seq(DataCollatorForSeq2Seq):
 
         if flag_stream:
             stream_features = copy.deepcopy(features)
-            for feature, stream_labels in zip(features, batch_stream_labels):
-                feature["labels"] = stream_labels
+            for stream_feature, stream_labels in zip(stream_features, batch_stream_labels):
+                stream_feature["labels"] = stream_labels
             stream_features: Dict[str, "torch.Tensor"] = super().__call__(stream_features)
+
             features: Dict[str, "torch.Tensor"] = super().__call__(features)
+
             features['stream_labels'] = stream_features['labels']
+
             if features['stream_labels'].shape != features['labels'].shape:
                 import pdb; pdb.set_trace()
                 print('error')
