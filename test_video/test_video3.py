@@ -31,9 +31,6 @@ if __name__ == '__main__':
     # default processer
     processor = AutoProcessor.from_pretrained(model_ckpt)
 
-
-
-
     video_info = {
         "type": "video",
         "video": video_path,
@@ -43,11 +40,12 @@ if __name__ == '__main__':
     all_frames = fetch_video(video_info)
 
     video_token_id = 151656
-
     text_historys = [{"role": 'user', 'content': query}]
+
     for idx_frame in range(2, len(all_frames), 2):
         video_message = {"role": 'user', 'content': [video_info, {"type": "text", "text": ''}]}
         messages = text_historys + [video_message]
+
         text = processor.apply_chat_template(messages, tokenize=False, add_generation_prompt=False)
         video_inputs = [all_frames[:idx_frame]]
         inputs = processor(text=[text],images=None, videos=video_inputs, padding=True, return_tensors="pt")
@@ -68,10 +66,10 @@ if __name__ == '__main__':
             generated_ids = model.generate(**inputs, max_new_tokens=128)
             generated_ids_trimmed = [
                 out_ids[len(in_ids) :] for in_ids, out_ids in zip(inputs.input_ids, generated_ids)
-        ]
-        output_text = processor.batch_decode(
-            generated_ids_trimmed, skip_special_tokens=True, clean_up_tokenization_spaces=False
-        )
-        output_text = output_text[0]
-        print(f'At time {idx_frame//2} s:\nAssistant: {output_text}\n')
-        text_historys.append({"role": 'assistant', 'content': output_text})
+            ]
+            output_text = processor.batch_decode(
+                generated_ids_trimmed, skip_special_tokens=True, clean_up_tokenization_spaces=False
+            )
+            output_text = output_text[0]
+            print(f'At time {idx_frame//2} s:\nAssistant: {output_text}\n')
+            text_historys.append({"role": 'assistant', 'content': output_text})

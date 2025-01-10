@@ -34,6 +34,7 @@ python src/train.py \
 
 
 export PYTHONPATH=$PYTHONPATH:/afs/zengwang/projects/task_define_service/LLaMA-Factory/src
+
 python test_video/test_video3.py \
   --model_path '/afs/zengwang/projects/task_define_service/LLaMA-Factory/work_dirs/stream_head_only_1/Stream-Qwen2-VL-7B-Instruct' \
   --video_path '/afs/zengwang/projects/task_define_service/data/video_event/push-up_2.mp4'
