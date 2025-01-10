@@ -65,5 +65,5 @@ for idx_frame in tqdm(range(2, len(all_frames), 2)):
             generated_ids_trimmed, skip_special_tokens=True, clean_up_tokenization_spaces=False
         )
         output_text = output_text[0]
-        print(f'At frame {idx_frame}:\nAssistant: {output_text}')
+        print(f'At time {idx_frame//2}:\nAssistant: {output_text}')
         text_historys.append({"role": 'assistant', 'content': output_text})
