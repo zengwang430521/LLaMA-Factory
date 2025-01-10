@@ -145,8 +145,8 @@ def _setup_lora_tuning(
     cast_trainable_params_to_fp32: bool,
 ) -> "PeftModel":
 
-    import pdb; pdb.set_trace()
-    print('Debug: Lora init')
+    # import pdb; pdb.set_trace()
+    # print('Debug: Lora init')
 
     if is_trainable:
         logger.info_rank0("Fine-tuning method: {}".format("DoRA" if finetuning_args.use_dora else "LoRA"))
