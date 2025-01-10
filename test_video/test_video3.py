@@ -19,6 +19,7 @@ if __name__ == '__main__':
     video_path = args.video_path
     fps = args.fps
     query = args.query
+    system_prompt = "You are a helpful assistant."
 
     model = Qwen2VLStream.from_pretrained(
         model_ckpt,
@@ -40,8 +41,11 @@ if __name__ == '__main__':
     all_frames = fetch_video(video_info)
 
     video_token_id = 151656
-    text_historys = [{"role": 'user', 'content': query}]
-    video_message = {"role": 'user', 'content': [video_info, {"type": "text", "text": ''}]}
+    text_historys = [
+        {"role": "system", "content": system_prompt},
+        {"role": "user", "content": query}
+    ]
+    video_message = {"role": "user", "content": [video_info, {"type": "text", "text": ""}]}
 
     def need_response(messages, video_inputs):
         text = processor.apply_chat_template(messages, tokenize=False, add_generation_prompt=False)
@@ -49,7 +53,7 @@ if __name__ == '__main__':
         inputs = inputs.to("cuda")
         with torch.no_grad():
             output = model.forward(**inputs)
-        last_frame_token_index = (inputs['input_ids'] == video_token_id).nonzero(as_tuple=True)[1].max().item()
+        last_frame_token_index = (inputs["input_ids"] == video_token_id).nonzero(as_tuple=True)[1].max().item()
         stream_logits = output.stream_logits
         last_logits = stream_logits[0, last_frame_token_index]
         return last_logits[1] > last_logits[0]
@@ -72,16 +76,17 @@ if __name__ == '__main__':
         return output_text
 
 
+    print(f"At time 0 s:\nSystem: {system_prompt}\nUser: {query}\n")
     for idx_frame in range(2, len(all_frames), 2):
         messages = text_historys + [video_message]
         video_inputs = [all_frames[:idx_frame]]
         if need_response(messages, video_inputs):
             output_text = get_response(messages, video_inputs)
-            print(f'At time {idx_frame / fps} s:\nAssistant: {output_text}\n')
-            text_historys.append({"role": 'assistant', 'content': output_text})
+            print(f"At time {idx_frame / fps} s:\nAssistant: {output_text}\n")
+            text_historys.append({"role": "assistant", "content": output_text})
 
     # final answer
     messages = text_historys + [video_message]
     video_inputs = [all_frames]
     output_text = get_response(messages, video_inputs)
-    print(f'At time {len(all_frames) / fps} s (video end):\nAssistant: {output_text}\n')
+    print(f"At time {len(all_frames) / fps} s (video end):\nAssistant: {output_text}\n")
