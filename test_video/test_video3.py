@@ -1,7 +1,7 @@
 from transformers import Qwen2VLForConditionalGeneration, AutoTokenizer, AutoProcessor
 from qwen_vl_utils import process_vision_info, fetch_video
 import torch
-from src.llamafactory.monkey_patch.qwen2_vl_monkey_patch import Qwen2VLStream
+from llamafactory.monkey_patch.qwen2_vl_monkey_patch import Qwen2VLStream
 from tqdm import tqdm
 
 

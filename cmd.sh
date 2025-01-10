@@ -33,6 +33,9 @@ python src/train.py \
 
 
 
+export PYTHONPATH=$PYTHONPATH:/afs/zengwang/projects/task_define_service/LLaMA-Factory/src
+python test_video/test_video3.py
+
 
 
 ~/ads-cli sync \
