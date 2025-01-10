@@ -51,7 +51,7 @@ for idx_frame in tqdm(range(2, len(all_frames), 2)):
     last_logits = stream_logits[0, last_frame_token_index]
 
     if last_logits[1] > last_logits[0]:
-        import pdb; pdb.set_trace()
+        # import pdb; pdb.set_trace()
         text = processor.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
         video_inputs = [all_frames[:idx_frame]]
         inputs = processor(text=[text], images=None, videos=video_inputs, padding=True, return_tensors="pt")
