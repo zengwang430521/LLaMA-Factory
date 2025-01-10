@@ -57,7 +57,7 @@ if __name__ == '__main__':
         stream_logits = output.stream_logits
         last_logits = stream_logits[0, last_frame_token_index]
         result = last_logits[1] > last_logits[0]
-        import pdb; pdb.set_trace()
+        # import pdb; pdb.set_trace()
         return result
 
     def get_response(messages, video_inputs):
