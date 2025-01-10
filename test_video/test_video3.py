@@ -56,7 +56,9 @@ if __name__ == '__main__':
         last_frame_token_index = (inputs["input_ids"] == video_token_id).nonzero(as_tuple=True)[1].max().item()
         stream_logits = output.stream_logits
         last_logits = stream_logits[0, last_frame_token_index]
-        return last_logits[1] > last_logits[0]
+        result = last_logits[1] > last_logits[0]
+        import pdb; pdb.set_trace()
+        return result
 
     def get_response(messages, video_inputs):
         text = processor.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
