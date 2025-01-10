@@ -4,33 +4,40 @@ import torch
 from llamafactory.monkey_patch.qwen2_vl_monkey_patch import Qwen2VLStream
 from tqdm import tqdm
 import argparse
+from peft import LoraConfig, LoraModel, PeftModel, TaskType, get_peft_model
 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="")
     parser.add_argument("--model_path", type=str, help="model_path")
+    parser.add_argument("--lora_path", type=str, help="lora path", default=None)
     parser.add_argument("--video_path", type=str, help="video_path")
     parser.add_argument("--fps", type=int, default=2)
     parser.add_argument("--query", type=str, default='Please narrate the video in real time.')
 
 
     args = parser.parse_args()
-    model_ckpt = args.model_path
+    model_path = args.model_path
     video_path = args.video_path
     fps = args.fps
     query = args.query
     system_prompt = "You are a helpful assistant."
+    lora_path = args.lora_path
 
     model = Qwen2VLStream.from_pretrained(
-        model_ckpt,
+        model_path,
         torch_dtype=torch.bfloat16,
         attn_implementation="flash_attention_2",
         device_map="auto",
     )
+    if lora_path is not None:
+        model = PeftModel.from_pretrained(model, lora_path)
+        model = model.merge_and_unload()
+
     model = model.eval()
 
     # default processer
-    processor = AutoProcessor.from_pretrained(model_ckpt)
+    processor = AutoProcessor.from_pretrained(model_path)
 
     video_info = {
         "type": "video",
