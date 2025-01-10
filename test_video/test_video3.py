@@ -37,7 +37,7 @@ all_frames = fetch_video(video_info)
 video_token_id = 151656
 
 text_historys = [{"role": 'user', 'content': query}]
-for idx_frame in tqdm(range(2, len(all_frames), 2)):
+for idx_frame in range(2, len(all_frames), 2):
     video_message = {"role": 'user', 'content': [video_info, {"type": "text", "text": ''}]}
     messages = text_historys + [video_message]
     text = processor.apply_chat_template(messages, tokenize=False, add_generation_prompt=False)
