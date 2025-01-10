@@ -37,11 +37,11 @@ export PYTHONPATH=$PYTHONPATH:/afs/zengwang/projects/task_define_service/LLaMA-F
 
 python test_video/test_video3.py \
   --model_path '/afs/zengwang/projects/task_define_service/LLaMA-Factory/work_dirs/stream_head_only_1/Stream-Qwen2-VL-7B-Instruct' \
+  --video_path '/afs/zengwang/projects/task_define_service/data/shot2story-videos_release_134k/W26nTWGbf3g.8.mp4'
+
   --video_path '/afs/zengwang/projects/task_define_service/data/video_event/push-up_2.mp4'
 
-    # video_path = '/afs/zengwang/projects/task_define_service/data/shot2story-videos_release_134k/W26nTWGbf3g.8.mp4'
-    # query = 'Please concisely narrate the video in real time.'
-    # fps = 4
+
 
 
 

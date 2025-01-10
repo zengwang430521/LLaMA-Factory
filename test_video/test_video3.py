@@ -41,13 +41,10 @@ if __name__ == '__main__':
 
     video_token_id = 151656
     text_historys = [{"role": 'user', 'content': query}]
+    video_message = {"role": 'user', 'content': [video_info, {"type": "text", "text": ''}]}
 
-    for idx_frame in range(2, len(all_frames), 2):
-        video_message = {"role": 'user', 'content': [video_info, {"type": "text", "text": ''}]}
-        messages = text_historys + [video_message]
-
+    def need_response(messages, video_inputs):
         text = processor.apply_chat_template(messages, tokenize=False, add_generation_prompt=False)
-        video_inputs = [all_frames[:idx_frame]]
         inputs = processor(text=[text],images=None, videos=video_inputs, padding=True, return_tensors="pt")
         inputs = inputs.to("cuda")
         with torch.no_grad():
@@ -55,21 +52,36 @@ if __name__ == '__main__':
         last_frame_token_index = (inputs['input_ids'] == video_token_id).nonzero(as_tuple=True)[1].max().item()
         stream_logits = output.stream_logits
         last_logits = stream_logits[0, last_frame_token_index]
+        return last_logits[1] > last_logits[0]
 
-        if last_logits[1] > last_logits[0]:
-            # import pdb; pdb.set_trace()
-            text = processor.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
-            video_inputs = [all_frames[:idx_frame]]
-            inputs = processor(text=[text], images=None, videos=video_inputs, padding=True, return_tensors="pt")
-            inputs = inputs.to("cuda")
+    def get_response(messages, video_inputs):
+        text = processor.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
+        inputs = processor(text=[text], images=None, videos=video_inputs, padding=True, return_tensors="pt")
+        inputs = inputs.to("cuda")
 
-            generated_ids = model.generate(**inputs, max_new_tokens=128)
-            generated_ids_trimmed = [
-                out_ids[len(in_ids) :] for in_ids, out_ids in zip(inputs.input_ids, generated_ids)
-            ]
-            output_text = processor.batch_decode(
-                generated_ids_trimmed, skip_special_tokens=True, clean_up_tokenization_spaces=False
-            )
-            output_text = output_text[0]
-            print(f'At time {idx_frame//2} s:\nAssistant: {output_text}\n')
+        generated_ids = model.generate(**inputs, max_new_tokens=128)
+        generated_ids_trimmed = [
+            out_ids[len(in_ids):] for in_ids, out_ids in zip(inputs.input_ids, generated_ids)
+        ]
+        output_text = processor.batch_decode(
+            generated_ids_trimmed,
+            skip_special_tokens=True,
+            clean_up_tokenization_spaces=False
+        )
+        output_text = output_text[0]
+        return output_text
+
+
+    for idx_frame in range(2, len(all_frames), 2):
+        messages = text_historys + [video_message]
+        video_inputs = [all_frames[:idx_frame]]
+        if need_response(messages, video_inputs):
+            output_text = get_response(messages, video_inputs)
+            print(f'At time {idx_frame / fps} s:\nAssistant: {output_text}\n')
             text_historys.append({"role": 'assistant', 'content': output_text})
+
+    # final answer
+    messages = text_historys + [video_message]
+    video_inputs = [all_frames]
+    output_text = get_response(messages, video_inputs)
+    print(f'At time {len(all_frames) / fps} s (video end):\nAssistant: {output_text}\n')
