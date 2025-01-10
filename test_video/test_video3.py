@@ -49,7 +49,14 @@ for idx_frame in tqdm(range(2, len(all_frames), 2)):
     last_frame_token_index = (inputs['input_ids'] == video_token_id).nonzero(as_tuple=True)[1].max().item()
     stream_logits = output.stream_logits
     last_logits = stream_logits[0, last_frame_token_index]
+
     if last_logits[1] > last_logits[0]:
+        import pdb; pdb.set_trace()
+        text = processor.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
+        video_inputs = [all_frames[:idx_frame]]
+        inputs = processor(text=[text], images=None, videos=video_inputs, padding=True, return_tensors="pt")
+        inputs = inputs.to("cuda")
+
         generated_ids = model.generate(**inputs, max_new_tokens=128)
         generated_ids_trimmed = [
             out_ids[len(in_ids) :] for in_ids, out_ids in zip(inputs.input_ids, generated_ids)
