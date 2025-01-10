@@ -2,6 +2,7 @@ from transformers import Qwen2VLForConditionalGeneration, AutoTokenizer, AutoPro
 from qwen_vl_utils import process_vision_info, fetch_video
 import torch
 from src.llamafactory.monkey_patch.qwen2_vl_monkey_patch import Qwen2VLStream
+from tqdm import tqdm
 
 
 model_ckpt = '/afs/zengwang/projects/task_define_service/LLaMA-Factory/work_dirs/stream_head_only_1/Stream-Qwen2-VL-7B-Instruct'
@@ -36,7 +37,7 @@ all_frames = fetch_video(video_info)
 video_token_id = 151656
 
 text_historys = [{"role": 'user', 'content': query}]
-for idx_frame in range(2, len(all_frames), 2):
+for idx_frame in tqdm(range(2, len(all_frames), 2)):
     video_message = {"role": 'user', 'content': [video_info, {"type": "text", "text": ''}]}
     messages = text_historys + [video_message]
     text = processor.apply_chat_template(messages, tokenize=False, add_generation_prompt=False)

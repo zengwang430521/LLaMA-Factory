@@ -21,7 +21,7 @@ torchrun $DISTRIBUTED_ARGS src/train.py \
     --do_train \
     --warmup_steps 100 \
     --weight_decay 0.1 \
-    --learning_rate 5e-6 \
+    --learning_rate 1.0e-4 \
     --lr_scheduler_type cosine \
     --stage sft \
     --do_train \
@@ -29,15 +29,14 @@ torchrun $DISTRIBUTED_ARGS src/train.py \
     --template qwen2_vl_stream \
     --overwrite_cache \
     --overwrite_output_dir \
-    --logging_steps 1 \
+    --logging_steps 10 \
     --ddp_timeout 9000  \
     --per_device_train_batch_size 1 \
     --gradient_accumulation_steps 16 \
     --mask_history \
     --freeze_vision_tower \
-    --finetuning_type freeze \
-    --freeze_trainable_layers 0 \
-    --freeze_extra_modules stream_head \
+    --finetuning_type lora \
+    --lora_rank 8 \
     --bf16 \
     --video_resolution 65536 \
     --video_fps 2 \
@@ -47,4 +46,4 @@ torchrun $DISTRIBUTED_ARGS src/train.py \
     --image_dir /afs/zengwang/projects/task_define_service/data/shot2story-videos_release_134k \
     --num_train_epochs 1 \
     --save_steps 500 \
-    --output_dir work_dirs/stream_head_only_1
+    --output_dir work_dirs/stream_lora_1
