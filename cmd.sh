@@ -43,7 +43,7 @@ python test_video/test_video3.py \
 
 python test_video/test_video3.py \
   --model_path /afs/zengwang/ckpt/Stream-Qwen2-VL-7B-Instruct \
-  --lora_path /afs/zengwang/projects/task_define_service/LLaMA-Factory/work_dirs/stream_lora_1 \
+  --lora_path /afs/zengwang/projects/task_define_service/LLaMA-Factory/work_dirs/stream_lora_1/checkpoint-500 \
   --video_path /afs/zengwang/projects/task_define_service/data/shot2story-videos_release_134k/W26nTWGbf3g.8.mp4
 
 
