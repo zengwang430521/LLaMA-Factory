@@ -21,7 +21,7 @@ torchrun $DISTRIBUTED_ARGS src/train.py \
     --do_train \
     --warmup_steps 100 \
     --weight_decay 0.1 \
-    --learning_rate 5e-6 \
+    --learning_rate 1.0e-5 \
     --lr_scheduler_type cosine \
     --stage sft \
     --do_train \
@@ -47,4 +47,5 @@ torchrun $DISTRIBUTED_ARGS src/train.py \
     --image_dir /afs/zengwang/projects/task_define_service/data/shot2story-videos_release_134k \
     --num_train_epochs 1 \
     --save_steps 500 \
-    --output_dir work_dirs/stream_lora_1
+    --output_dir work_dirs/stream_lora_2 \
+    --stream_loss_factor 10

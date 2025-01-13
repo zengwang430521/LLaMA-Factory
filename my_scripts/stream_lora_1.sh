@@ -21,7 +21,7 @@ torchrun $DISTRIBUTED_ARGS src/train.py \
     --do_train \
     --warmup_steps 100 \
     --weight_decay 0.1 \
-    --learning_rate 1.0e-4 \
+    --learning_rate 1.0e-5 \
     --lr_scheduler_type cosine \
     --stage sft \
     --do_train \
