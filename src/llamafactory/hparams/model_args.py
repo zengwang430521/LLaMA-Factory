@@ -309,7 +309,6 @@ class ModelArguments(QuantizationArguments, ProcessorArguments, ExportArguments,
         init=False,
         metadata={"help": "Whether use block diag attention or not, derived from `neat_packing`. Do not specify it."},
     )
-
     stream_loss_factor: Optional[float] = field(
         default=None,
         init=False,
