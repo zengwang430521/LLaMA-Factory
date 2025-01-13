@@ -2,6 +2,8 @@ rm -rf ~/.ssh
 ln -s /afs/zengwang/.ssh ~/.ssh
 
 cd /afs/zengwang/projects/task_define_service/LLaMA-Factory
+export PYTHONPATH=$PYTHONPATH:/afs/zengwang/projects/task_define_service/LLaMA-Factory/src
+
 
 python src/train.py \
   --stage sft \
@@ -35,17 +37,19 @@ python src/train.py \
 export PYTHONPATH=$PYTHONPATH:/afs/zengwang/projects/task_define_service/LLaMA-Factory/src
 
 python test_video/test_video3.py \
-  --model_path '/afs/zengwang/projects/task_define_service/LLaMA-Factory/work_dirs/stream_head_only_1/Stream-Qwen2-VL-7B-Instruct' \
-  --video_path '/afs/zengwang/projects/task_define_service/data/video_event/push-up_2.mp4'
-  --video_path '/afs/zengwang/projects/task_define_service/data/shot2story-videos_release_134k/W26nTWGbf3g.8.mp4'
+  --model_path /afs/zengwang/projects/task_define_service/LLaMA-Factory/work_dirs/stream_head_only_1/Stream-Qwen2-VL-7B-Instruct \
+  --video_path /afs/zengwang/projects/task_define_service/data/video_event/push-up_2.mp4
+
 
 python test_video/test_video3.py \
-  --model_path '/afs/zengwang/ckpt/Stream-Qwen2-VL-7B-Instruct' \
-  --lora_path '/afs/zengwang/projects/task_define_service/LLaMA-Factory/work_dirs/stream_lora_1/checkpoint-1500' \
-  --video_path '/afs/zengwang/projects/task_define_service/data/video_event/push-up_2.mp4'
+  --model_path /afs/zengwang/ckpt/Stream-Qwen2-VL-7B-Instruct \
+  --lora_path /afs/zengwang/projects/task_define_service/LLaMA-Factory/work_dirs/stream_lora_1 \
+  --video_path /afs/zengwang/projects/task_define_service/data/video_event/push-up_2.mp4
 
 
 
+  --video_path /afs/zengwang/projects/task_define_service/data/video_event/push-up_2.mp4
+  --video_path /afs/zengwang/projects/task_define_service/data/shot2story-videos_release_134k/W26nTWGbf3g.8.mp4
 
 
 
