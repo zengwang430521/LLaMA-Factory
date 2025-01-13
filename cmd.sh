@@ -26,8 +26,8 @@ python src/train.py \
   --num_train_epochs 1 \
   --output_dir work_dirs/debug \
   --dataset MMDuetIT_dvc_stream_sample100 \
+  --stream_loss_factor 2.0 \
   --image_dir /afs/zengwang/projects/task_define_service/data/shot2story-videos_release_134k
-  --stream_loss_factor 2.0
 
 
   --dataset mllm_video_stream_demo
