@@ -311,7 +311,6 @@ class ModelArguments(QuantizationArguments, ProcessorArguments, ExportArguments,
     )
     stream_loss_factor: Optional[float] = field(
         default=None,
-        init=False,
         metadata={"help": "stream loss factor in stream model"},
     )
 

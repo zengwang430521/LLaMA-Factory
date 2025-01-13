@@ -147,7 +147,6 @@ def _check_extra_dependencies(
 
 
 def _parse_train_args(args: Optional[Dict[str, Any]] = None) -> _TRAIN_CLS:
-    import pdb; pdb.set_trace()
     parser = HfArgumentParser(_TRAIN_ARGS)
     return _parse_args(parser, args)
 
