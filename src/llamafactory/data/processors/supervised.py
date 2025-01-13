@@ -168,8 +168,11 @@ def _encode_supervised_stream_example(
             t = 0
 
         elif message["role"] == Role.ASSISTANT.value:
-            prefix = ['<|im_start|>assistant\n']
-            content = [message['content'], '<eos_token>']
+            # 现在的写法非常死板，如果elements中本身有内容，表示是特殊情况,需要额外处理
+            assert len(elements) == 0
+            elements += template.format_assistant.apply(content=message["content"])
+            prefix = elements[:1]
+            content = elements[1:]
             encoded_prefix = template._convert_elements_to_ids(tokenizer, prefix)
             encoded_content = template._convert_elements_to_ids(tokenizer, content)
             input_ids += encoded_prefix + encoded_content

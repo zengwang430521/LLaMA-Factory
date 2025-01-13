@@ -1160,7 +1160,7 @@ _register_template(
     name="qwen2_vl_stream",
     format_user=StringFormatter(slots=["<|im_start|>user\n{{content}}<|im_end|>\n"]),
     format_system=StringFormatter(slots=["<|im_start|>system\n{{content}}<|im_end|>\n"]),
-    format_assistant=StringFormatter(slots=["<|im_start|>assistant\n{{content}}", "eos_token"]),
+    format_assistant=StringFormatter(slots=["<|im_start|>assistant\n", "{{content}}", {"eos_token"}]),
     format_function=FunctionFormatter(slots=["{{content}}", "<|im_end|>"], tool_format="qwen"),
     format_observation=StringFormatter(
         slots=["<|im_start|>user\n<tool_response>\n{{content}}\n</tool_response><|im_end|>\n<|im_start|>assistant\n"]
