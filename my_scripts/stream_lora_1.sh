@@ -43,6 +43,7 @@ torchrun $DISTRIBUTED_ARGS src/train.py \
     --video_fps 2 \
     --video_maxlen 64 \
     --cutoff_len 4096 \
+    --preprocessing_num_workers 16 \
     --dataset MMDuetIT_dvc_stream,MMDuetIT_magqa_stream \
     --image_dir /afs/zengwang/projects/task_define_service/data/shot2story-videos_release_134k \
     --num_train_epochs 1 \

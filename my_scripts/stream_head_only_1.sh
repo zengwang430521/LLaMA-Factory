@@ -31,8 +31,8 @@ torchrun $DISTRIBUTED_ARGS src/train.py \
     --overwrite_output_dir \
     --logging_steps 1 \
     --ddp_timeout 9000  \
-    --per_device_train_batch_size 2 \
-    --gradient_accumulation_steps 8 \
+    --per_device_train_batch_size 1 \
+    --gradient_accumulation_steps 16 \
     --mask_history \
     --freeze_vision_tower \
     --finetuning_type freeze \

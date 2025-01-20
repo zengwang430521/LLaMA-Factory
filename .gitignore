@@ -175,3 +175,4 @@ swanlog/
 generated_predictions.jsonl
 
 cmd_火山.sh
+cmd_sensecore.sh
