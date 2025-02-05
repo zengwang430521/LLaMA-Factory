@@ -993,6 +993,356 @@ class Qwen2vlStreamPlugin(BasePlugin):
         return self._get_mm_inputs(images, videos, processor, video_time_segs)
 
 
+
+class Qwen2vlStreamPluginV2(BasePlugin):
+    @override
+    def _preprocess_image(self, image: "ImageObject", **kwargs) -> "ImageObject":
+        image = super()._preprocess_image(image, **kwargs)
+        if min(image.width, image.height) < 28:
+            width, height = max(image.width, 28), max(image.height, 28)
+            image = image.resize((width, height), resample=Image.NEAREST)
+
+        if image.width / image.height > 200:
+            width, height = image.height * 180, image.height
+            image = image.resize((width, height), resample=Image.NEAREST)
+
+        if image.height / image.width > 200:
+            width, height = image.width, image.width * 180
+            image = image.resize((width, height), resample=Image.NEAREST)
+
+        return image
+
+    @override
+    def _get_video_sample_frames(self, video_stream: "Stream", **kwargs) -> int:
+        r"""
+        Computes video sample frames according to fps.
+        """
+        video_fps: float = kwargs.get("video_fps")
+        video_maxlen: int = kwargs.get("video_maxlen")
+        total_frames = video_stream.frames
+        sample_frames = float(video_stream.duration * video_stream.time_base) * video_fps
+        # sample_frames = min(total_frames, video_maxlen, sample_frames)
+        sample_frames = min(total_frames, sample_frames)
+        return math.floor(sample_frames)
+
+    @override
+    def _regularize_videos(
+            self,
+            videos: Sequence["VideoInput"],
+            video_time_segs: Sequence["List"],
+            **kwargs) -> List[List["ImageObject"]]:
+
+        results = []
+        frame_times = []
+        for video, time_seg in zip(videos, video_time_segs):
+            t_start, t_end = time_seg
+            container = av.open(video, "r")
+            video_stream = next(stream for stream in container.streams if stream.type == "video")
+            total_frames = video_stream.frames
+            sample_frames = self._get_video_sample_frames(video_stream, **kwargs)
+            sample_indices = np.linspace(0, total_frames - 1, sample_frames).astype(np.int32)
+            sample_times = np.linspace(0, float(video_stream.duration * video_stream.time_base), sample_frames)
+
+            sample_indices_seg, sample_times_seg = [], []
+            for idx, t in zip(sample_indices, sample_times):
+                if t_start <= t <= t_end:
+                    sample_indices_seg.append(idx)
+                    sample_times_seg.append(t)
+            video_maxlen: int = kwargs.get("video_maxlen")
+            if len(sample_indices_seg) > video_maxlen:
+                sample_indices_seg = sample_indices_seg[-video_maxlen:]
+                sample_times_seg = sample_times_seg[-video_maxlen:]
+
+            frames: List["ImageObject"] = []
+            container.seek(0)
+            for frame_idx, frame in enumerate(container.decode(video_stream)):
+                if frame_idx in sample_indices_seg:
+                    frames.append(frame.to_image())
+
+            if len(frames) % 2 != 0:  # qwen2-vl requires even number of frames
+                frames.append(frames[-1])
+                sample_times_seg.append(sample_times_seg[-1])
+
+            frames = self._regularize_images(frames, **kwargs)
+            results.append(frames)
+            frame_times.append(sample_times_seg)
+
+        return results, frame_times
+
+    @override
+    def _get_mm_inputs(
+        self,
+        images: Sequence["ImageInput"],
+        videos: Sequence["VideoInput"],
+        processor: "ProcessorMixin",
+        video_time_segs: Sequence["List"],
+    ) -> Dict[str, "torch.Tensor"]:
+        r"""
+        Processes visual inputs.
+
+        Returns: (llava and paligemma)
+            pixel_values: tensor with shape (B, C, H, W)
+
+        Returns: (qwen2-vl)
+            pixel_values: tensor with shape (num_patches, patch_dim)
+            image_grid_thw: tensor with shape (num_images, 3), where the three numbers are time, width, height
+
+        It holds num_patches == torch.prod(image_grid_thw)
+        """
+        image_processor: "BaseImageProcessor" = getattr(processor, "image_processor")
+        video_processor: "BaseImageProcessor" = getattr(processor, "video_processor", image_processor)
+        input_dict = {"images": None}  # default key
+        if len(images) != 0:
+            images = self._regularize_images(
+                images,
+                image_resolution=getattr(processor, "image_resolution", 512 * 512),
+            )
+            input_dict["images"] = images
+
+        if len(videos) != 0:
+            videos, frame_times = self._regularize_videos(
+                videos,
+                video_time_segs=video_time_segs,
+                image_resolution=getattr(processor, "video_resolution", 128 * 128),
+                video_fps=getattr(processor, "video_fps", 2.0),
+                video_maxlen=getattr(processor, "video_maxlen", 64),
+            )
+            input_dict["videos"] = videos
+
+        mm_inputs = {}
+        if image_processor != video_processor:
+            if input_dict.get("images") is not None:
+                mm_inputs.update(image_processor(input_dict["images"], return_tensors="pt"))
+            if input_dict.get("videos") is not None:
+                mm_inputs.update(video_processor(input_dict["videos"], return_tensors="pt"))
+        elif input_dict.get("images") is not None or input_dict.get("videos") is not None:  # same processor (qwen2-vl)
+            mm_inputs.update(image_processor(**input_dict, return_tensors="pt"))
+            if input_dict.get("videos") is not None:
+                mm_inputs['frame_times'] = [torch.FloatTensor(t[::2]) for t in frame_times]
+
+        return mm_inputs
+
+    '''
+    接下来都是为了加速数据集的预处理，不然视频训练太慢了
+    '''
+    def  _get_fake_mm_inputs(
+        self,
+        images: Sequence["ImageInput"],
+        videos: Sequence["VideoInput"],
+        processor: "ProcessorMixin",
+        video_time_segs: Sequence["List"],
+    ):
+        '''图片部分正常处理'''
+        image_processor: "BaseImageProcessor" = getattr(processor, "image_processor")
+        input_dict = {"images": None}  # default key
+        if len(images) != 0:
+            images = self._regularize_images(
+                images,
+                image_resolution=getattr(processor, "image_resolution", 512 * 512),
+            )
+            input_dict["images"] = images
+        mm_inputs = {}
+        if input_dict.get("images") is not None:
+            mm_inputs.update(image_processor(input_dict["images"], return_tensors="pt"))
+
+        # 视频部分简单处理
+        def get_video_grid_thw():
+            video_grid_thw = []
+
+            # _regularize_videos() 中的过程
+            video_frame_shapes = []
+            frame_times = []
+            for video, time_seg in zip(videos, video_time_segs):
+                t_start, t_end = time_seg
+                container = av.open(video, "r")
+                video_stream = next(stream for stream in container.streams if stream.type == "video")
+                frame_width, frame_height = video_stream.codec_context.width, video_stream.codec_context.height
+
+                total_frames = video_stream.frames
+                sample_frames = self._get_video_sample_frames(
+                    video_stream,
+                    video_fps=getattr(processor, "video_fps", 2.0),
+                    video_maxlen=getattr(processor, "video_maxlen", 64),
+                )
+                sample_indices = np.linspace(0, total_frames - 1, sample_frames).astype(np.int32)
+                sample_times = np.linspace(0, float(video_stream.duration * video_stream.time_base), sample_frames)
+                sample_indices_seg, sample_times_seg = [], []
+                for idx, t in zip(sample_indices, sample_times):
+                    if t_start <= t <= t_end:
+                        sample_indices_seg.append(idx)
+                        sample_times_seg.append(t)
+                video_maxlen = getattr(processor, "video_maxlen", 64)
+                if len(sample_indices_seg) > video_maxlen:
+                    sample_indices_seg = sample_indices_seg[-video_maxlen:]
+                    sample_times_seg = sample_times_seg[-video_maxlen:]
+
+                # 不需要真的读取视频
+                # frames: List["ImageObject"] = []
+                # container.seek(0)
+                # for frame_idx, frame in enumerate(container.decode(video_stream)):
+                #     if frame_idx in sample_indices_seg:
+                #         frames.append(frame.to_image())
+
+                if len(sample_times_seg) % 2 != 0:
+                    sample_times_seg.append(sample_times_seg[-1])
+
+                sample_frame_shapes = [(frame_width, frame_height)] * len(sample_times_seg)
+                sample_frame_shapes = _regularize_images_shape(sample_frame_shapes, image_resolution=getattr(processor, "video_resolution", 128 * 128))
+
+                # video_frame_shapes.append(sample_frame_shapes)
+                # frame_times.append(sample_times_seg)
+
+                # image_processor 过程
+                new_width, new_height = sample_frame_shapes[0]
+                grid_thw = _process_images_shape(len(sample_frame_shapes), new_width, new_height, image_processor)
+                video_grid_thw.append(torch.tensor(grid_thw))
+                frame_times.append(sample_times_seg[::2])
+            return video_grid_thw, frame_times
+
+        def _regularize_images_shape(image_shapes, image_resolution):
+            output_shapes = []
+            for width, height in image_shapes:
+                if (width * height) > image_resolution:
+                    resize_factor = math.sqrt(image_resolution / (width * height))
+                    width, height = int(width * resize_factor), int(height * resize_factor)
+
+                if min(width, height) < 28:
+                    width, height = max(width, 28), max(height, 28)
+
+                if width / height > 200:
+                    width, height = height * 180, height
+
+                if height / width > 200:
+                    width, height = width, width * 180
+
+                output_shapes.append((width, height))
+
+            return output_shapes
+
+        def _process_images_shape(num_frame, width, height, image_processor):
+            if num_frame == 1:
+                num_frame = 2
+            if image_processor.do_resize:
+                resized_height, resized_width = smart_resize(
+                    height,
+                    width,
+                    factor=image_processor.patch_size * image_processor.merge_size,
+                    min_pixels=image_processor.min_pixels,
+                    max_pixels=image_processor.max_pixels,
+                )
+            else:
+                resized_height, resized_width = height, width
+
+            grid_t = num_frame // image_processor.temporal_patch_size
+            grid_h, grid_w = resized_height // image_processor.patch_size, resized_width // image_processor.patch_size
+            return grid_t, grid_h, grid_w
+
+        video_grid_thw, frame_times = get_video_grid_thw()
+        mm_inputs["video_grid_thw"] = video_grid_thw
+        mm_inputs["frame_times"] = frame_times
+        return mm_inputs
+
+
+    @override
+    def process_messages(
+        self,
+        messages: Sequence[Dict[str, str]],
+        images: Sequence["ImageInput"],
+        videos: Sequence["VideoInput"],
+        processor: Optional["ProcessorMixin"],
+    ) -> List[Dict[str, str]]:
+        # import pdb; pdb.set_trace()
+
+        self._validate_input(images, videos)
+        image_processor: "BaseImageProcessor" = getattr(processor, "image_processor")
+        merge_length: int = getattr(image_processor, "merge_size") ** 2
+
+        # 判断视频应该怎么分段
+        video_time_segs = []
+        for message in messages:
+            content = message["content"]
+            if VIDEO_PLACEHOLDER in content:
+                time = message['time']
+                video_time_segs.append(time)
+
+        # import pdb; pdb.set_trace()
+        # print("获取视频尺寸")
+
+        # mm_inputs = self._get_mm_inputs(images, videos, processor, video_time_segs)
+        mm_inputs = self._get_fake_mm_inputs(images, videos, processor, video_time_segs)
+
+        image_grid_thw = mm_inputs.get("image_grid_thw", [])
+        video_grid_thw = mm_inputs.get("video_grid_thw", [])
+
+        num_image_tokens, num_video_tokens = 0, 0
+        messages = deepcopy(messages)
+        for message in messages:
+            content = message["content"]
+            content_stream = deepcopy(message['content'])
+            while IMAGE_PLACEHOLDER in content:
+                if num_image_tokens >= len(image_grid_thw):
+                    raise ValueError(f"`len(images)` is less than the number of {IMAGE_PLACEHOLDER} tokens.")
+
+                image_seqlen = image_grid_thw[num_image_tokens].prod() // merge_length if self.expand_mm_tokens else 1
+                content = content.replace(
+                    IMAGE_PLACEHOLDER, f"<|vision_start|>{self.image_token * image_seqlen}<|vision_end|>", 1
+                )
+                num_image_tokens += 1
+
+            while VIDEO_PLACEHOLDER in content:
+                if num_video_tokens >= len(video_grid_thw):
+                    raise ValueError(f"`len(videos)` is less than the number of {VIDEO_PLACEHOLDER} tokens.")
+
+                video_seqlen = video_grid_thw[num_video_tokens].prod() // merge_length if self.expand_mm_tokens else 1
+                content = content.replace(
+                    VIDEO_PLACEHOLDER, f"<|vision_start|>{self.video_token * video_seqlen}<|vision_end|>", 1
+                )
+
+                # TODO: 使用更规范的实现方式
+                # 用于判断哪些位置代表这一帧结束，用于进行stream_head的训练
+                # 借用一下现有的special token:
+                # <|video_pad|>: 普通的 video token
+                # <|im_end|>: 每一帧的最后一个 video token
+                # <|im_start|>: 回复前的最后一帧的最后1个 video token
+
+                # import pdb; pdb.set_trace()
+                # print('Debug: 设置content_stream')
+                frame_num = video_grid_thw[num_video_tokens][0]
+                frame_seqlen = video_grid_thw[num_video_tokens][1:].prod() // merge_length if self.expand_mm_tokens else 1
+                video_content = ((self.video_token * (frame_seqlen - 1) + FRAME_END_TOKEN) * (frame_num - 1) +
+                                 (self.video_token * (frame_seqlen - 1) + FRAME_RESPONSE_TOKEN))
+                content_stream = content_stream.replace(VIDEO_PLACEHOLDER, f"<|vision_start|>{video_content}<|vision_end|>", 1)
+
+                num_video_tokens += 1
+
+            message["content"] = content
+            message["content_stream"] = content_stream
+
+        if len(images) != num_image_tokens:
+            raise ValueError(f"The number of images does not match the number of {IMAGE_PLACEHOLDER} tokens.")
+
+        if len(videos) != num_video_tokens:
+            raise ValueError(f"The number of videos does not match the number of {VIDEO_PLACEHOLDER} tokens.")
+
+        return messages
+
+    @override
+    def get_mm_inputs(
+        self,
+        images: Sequence["ImageInput"],
+        videos: Sequence["VideoInput"],
+        imglens: Sequence[int],
+        vidlens: Sequence[int],
+        batch_ids: Sequence[List[int]],
+        processor: Optional["ProcessorMixin"],
+        video_time_segs: Sequence["List"],
+    ) -> Dict[str, Union[List[int], "torch.Tensor"]]:
+        # import pdb; pdb.set_trace()
+        self._validate_input(images, videos)
+        return self._get_mm_inputs(images, videos, processor, video_time_segs)
+
+
+
 class VideoLlavaPlugin(BasePlugin):
     @override
     def process_messages(
@@ -1146,6 +1496,7 @@ PLUGINS = {
     "pixtral": PixtralPlugin,
     "qwen2_vl": Qwen2vlPlugin,
     "qwen2_vl_stream": Qwen2vlStreamPlugin,
+    "qwen2_vl_stream_v2": Qwen2vlStreamPluginV2,
     "video_llava": VideoLlavaPlugin,
     "mllama": MllamaPlugin,
 }
