@@ -162,7 +162,7 @@ class MultiModalDataCollatorForSeq2Seq(DataCollatorForSeq2Seq):
             features['stream_labels'] = stream_features['labels']
 
             if features['stream_labels'].shape != features['labels'].shape:
-                import pdb; pdb.set_trace()
+                # import pdb; pdb.set_trace()
                 print('error')
         else:
             features: Dict[str, "torch.Tensor"] = super().__call__(features)

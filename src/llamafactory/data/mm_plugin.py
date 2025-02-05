@@ -902,7 +902,8 @@ class Qwen2vlStreamPlugin(BasePlugin):
         videos: Sequence["VideoInput"],
         processor: Optional["ProcessorMixin"],
     ) -> List[Dict[str, str]]:
-        # import pdb; pdb.set_trace()
+        import pdb; pdb.set_trace()
+        print('Debug: 处理messages')
 
         self._validate_input(images, videos)
         image_processor: "BaseImageProcessor" = getattr(processor, "image_processor")
@@ -1125,7 +1126,7 @@ class Qwen2vlStreamPluginV2(BasePlugin):
     '''
     接下来都是为了加速数据集的预处理，不然视频训练太慢了
     '''
-    def  _get_fake_mm_inputs(
+    def _get_fake_mm_inputs(
         self,
         images: Sequence["ImageInput"],
         videos: Sequence["VideoInput"],
