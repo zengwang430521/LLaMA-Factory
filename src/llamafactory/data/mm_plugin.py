@@ -920,8 +920,8 @@ class Qwen2vlStreamPlugin(BasePlugin):
         # import pdb; pdb.set_trace()
         # print("获取视频尺寸")
 
-        # mm_inputs = self._get_mm_inputs(images, videos, processor, video_time_segs)
-        mm_inputs = self._get_fake_mm_inputs(images, videos, processor, video_time_segs)
+        mm_inputs = self._get_mm_inputs(images, videos, processor, video_time_segs)
+        # mm_inputs = self._get_fake_mm_inputs(images, videos, processor, video_time_segs)
 
         image_grid_thw = mm_inputs.get("image_grid_thw", [])
         video_grid_thw = mm_inputs.get("video_grid_thw", [])
