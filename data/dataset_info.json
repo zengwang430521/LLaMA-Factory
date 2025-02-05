@@ -130,7 +130,7 @@
   },
 
 
-  "mllm_video_stream_v2_demo": {
+  "mllm_video_stream_demo_v2": {
     "file_name": "mllm_video_stream_demo_v2.json",
     "formatting": "sharegpt_stream",
     "columns": {
