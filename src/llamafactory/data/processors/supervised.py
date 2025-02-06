@@ -285,7 +285,7 @@ def _encode_supervised_stream_example_v2(
             tmp_stream_labels = [IGNORE_INDEX] * len(encode_elements_stream)
             for idx in judge_spots[:-1]:
                 tmp_stream_labels[idx] = 0
-            tmp_stream_labels[judge_spots[-1]] = need_response
+            tmp_stream_labels[judge_spots[-1]] = int(need_response)
             stream_labels += tmp_stream_labels
             t = 0
 
