@@ -1157,7 +1157,7 @@ _register_template(
 
 
 _register_template(
-    name="qwen2_vl_stream",
+    name="qwen2_vl_stream_v1",
     format_user=StringFormatter(slots=["<|im_start|>user\n{{content}}<|im_end|>\n"]),
     format_system=StringFormatter(slots=["<|im_start|>system\n{{content}}<|im_end|>\n"]),
     format_assistant=StringFormatter(slots=["<|im_start|>assistant\n", "{{content}}", {"eos_token"}]),
