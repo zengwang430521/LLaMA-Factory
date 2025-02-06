@@ -16,7 +16,7 @@ from collections import defaultdict
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Sequence, Tuple
 
 from ...extras import logging
-from ...extras.constants import IGNORE_INDEX, FRAME_RESPONSE_TOKEN, FRAME_END_TOKEN, VIDEO_PLACEHOLDER
+from ...extras.constants import IGNORE_INDEX, DO_RESPONSE_TOKEN, NO_RESPONSE_TOKEN, VIDEO_PLACEHOLDER, FRAME_END_TOKEN
 from .processor_utils import greedy_knapsack, infer_seqlen
 from copy import deepcopy
 
@@ -129,8 +129,8 @@ def _encode_supervised_stream_example(
 
     # 用于stream_head回复时机的训练，
     video_pad_id = tokenizer.encode('<|video_pad|>')[0]    # 普通的 video token
-    frame_end_id = tokenizer.encode(FRAME_END_TOKEN)[0]    # 每一帧的最后一个 video token
-    frame_response_id = tokenizer.encode(FRAME_RESPONSE_TOKEN)[0]   # 回复前的最后一帧的最后1个 video token
+    frame_end_id = tokenizer.encode(NO_RESPONSE_TOKEN)[0]    # 每一帧的最后一个 video token
+    frame_response_id = tokenizer.encode(DO_RESPONSE_TOKEN)[0]   # 回复前的最后一帧的最后1个 video token
 
     stream_labels = [IGNORE_INDEX] * len(labels)
     for i, message in enumerate(messages):
@@ -241,7 +241,8 @@ def _encode_supervised_stream_example_v2(
     # 用于stream_head回复时机的训练，
     video_pad_id = tokenizer.encode('<|video_pad|>')[0]    # 普通的 video token
     frame_end_id = tokenizer.encode(FRAME_END_TOKEN)[0]    # 每一帧的最后一个 video token
-    frame_response_id = tokenizer.encode(FRAME_RESPONSE_TOKEN)[0]   # 回复前的最后一帧的最后1个 video token
+    text_end_id = tokenizer.encode('<|im_end|>')[0]
+    vision_end_id = tokenizer.encode('<|vision_end|>')[0]
 
     stream_labels = [IGNORE_INDEX] * len(labels)
     for i, message in enumerate(messages):
@@ -265,17 +266,27 @@ def _encode_supervised_stream_example_v2(
             labels += [IGNORE_INDEX] * len(encode_elements)
 
             # 用于训练回复时机
+            need_response = False
+            if i + 1 < len(messages):
+                next_message = messages[i + 1]
+                need_response = (next_message["role"] == Role.ASSISTANT.value)
             encode_elements_stream = template._convert_elements_to_ids(tokenizer, elements_stream)
-            for token_id in encode_elements_stream:
-                if token_id == frame_response_id:
-                    stream_labels.append(1)
-                elif token_id == frame_end_id:
-                    stream_labels.append(0)
-                elif token_id == video_pad_id:
-                    stream_labels.append(IGNORE_INDEX)  # 不监督
-                    # stream_labels.append(0)             # 监督
-                else:
-                    stream_labels.append(IGNORE_INDEX)
+
+            judge_spots = []
+            for idx, token_idx in enumerate(encode_elements_stream):
+                if token_idx == frame_end_id:
+                    # 每一帧的最后一个vision token是判别点
+                    judge_spots.append(idx)
+                elif token_idx == text_end_id and encode_elements_stream[idx-1] != vision_end_id:
+                    # 视频后有文本内容的话，最后的<|im_end|>是判别点
+                    judge_spots.append(idx)
+
+            # 最后1个判别点根据情况判断，之前的其他判别点不能回复
+            tmp_stream_labels = [IGNORE_INDEX] * len(encode_elements_stream)
+            for idx in judge_spots[:-1]:
+                tmp_stream_labels[idx] = 0
+            tmp_stream_labels[judge_spots[-1]] = need_response
+            stream_labels += tmp_stream_labels
             t = 0
 
         elif message["role"] == Role.ASSISTANT.value:

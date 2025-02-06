@@ -92,9 +92,14 @@ V_HEAD_SAFE_WEIGHTS_NAME = "value_head.safetensors"
 VISION_MODELS = set()
 
 
-# TODO: 要规范的话，得用新的special token
-FRAME_END_TOKEN = '<|quad_end|>'          # 每一帧的最后一个 video token
-FRAME_RESPONSE_TOKEN = '<|quad_start|>'   # 应该进行回复的这一帧图片的最后1个 video token
+# TODO: 暂时借用一下现有的special token, 要规范的话，得用新的special token
+NO_RESPONSE_TOKEN = '<|quad_end|>'          # 不能进行回复
+DO_RESPONSE_TOKEN = '<|quad_start|>'   # 应该进行回复
+
+
+# TODO: 暂时借用一下现有的special token, 要规范的话，得用新的special token
+FRAME_END_TOKEN = '<|quad_end|>'          # 表示每帧的最后一个vision token
+
 
 
 class DownloadSource(str, Enum):

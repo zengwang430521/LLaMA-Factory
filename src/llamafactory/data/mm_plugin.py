@@ -8,7 +8,7 @@ import torch
 from transformers.image_utils import get_image_size, to_numpy_array
 from typing_extensions import override
 
-from ..extras.constants import IGNORE_INDEX, IMAGE_PLACEHOLDER, VIDEO_PLACEHOLDER, FRAME_RESPONSE_TOKEN, FRAME_END_TOKEN
+from ..extras.constants import IGNORE_INDEX, IMAGE_PLACEHOLDER, VIDEO_PLACEHOLDER, DO_RESPONSE_TOKEN, NO_RESPONSE_TOKEN, FRAME_END_TOKEN
 from ..extras.packages import is_pillow_available, is_pyav_available, is_transformers_version_greater_than
 
 
@@ -961,10 +961,8 @@ class Qwen2vlStreamPlugin(BasePlugin):
                 # print('Debug: 设置content_stream')
                 frame_num = video_grid_thw[num_video_tokens][0]
                 frame_seqlen = video_grid_thw[num_video_tokens][1:].prod() // merge_length if self.expand_mm_tokens else 1
-                video_content = ((self.video_token * (frame_seqlen - 1) + FRAME_END_TOKEN) * (frame_num - 1) +
-                                 (self.video_token * (frame_seqlen - 1) + FRAME_RESPONSE_TOKEN))
+                video_content = (self.video_token * (frame_seqlen - 1) + FRAME_END_TOKEN) * frame_num
                 content_stream = content_stream.replace(VIDEO_PLACEHOLDER, f"<|vision_start|>{video_content}<|vision_end|>", 1)
-
                 num_video_tokens += 1
 
             message["content"] = content
@@ -992,7 +990,6 @@ class Qwen2vlStreamPlugin(BasePlugin):
         # import pdb; pdb.set_trace()
         self._validate_input(images, videos)
         return self._get_mm_inputs(images, videos, processor, video_time_segs)
-
 
 
 class Qwen2vlStreamPluginV2(BasePlugin):
@@ -1253,7 +1250,6 @@ class Qwen2vlStreamPluginV2(BasePlugin):
         processor: Optional["ProcessorMixin"],
     ) -> List[Dict[str, str]]:
         # import pdb; pdb.set_trace()
-
         self._validate_input(images, videos)
         image_processor: "BaseImageProcessor" = getattr(processor, "image_processor")
         merge_length: int = getattr(image_processor, "merge_size") ** 2
@@ -1310,8 +1306,8 @@ class Qwen2vlStreamPluginV2(BasePlugin):
                 # print('Debug: 设置content_stream')
                 frame_num = video_grid_thw[num_video_tokens][0]
                 frame_seqlen = video_grid_thw[num_video_tokens][1:].prod() // merge_length if self.expand_mm_tokens else 1
-                video_content = ((self.video_token * (frame_seqlen - 1) + FRAME_END_TOKEN) * (frame_num - 1) +
-                                 (self.video_token * (frame_seqlen - 1) + FRAME_RESPONSE_TOKEN))
+                video_content = ((self.video_token * (frame_seqlen - 1) + NO_RESPONSE_TOKEN) * (frame_num - 1) +
+                                 (self.video_token * (frame_seqlen - 1) + DO_RESPONSE_TOKEN))
                 content_stream = content_stream.replace(VIDEO_PLACEHOLDER, f"<|vision_start|>{video_content}<|vision_end|>", 1)
 
                 num_video_tokens += 1
