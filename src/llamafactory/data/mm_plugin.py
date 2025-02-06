@@ -774,9 +774,9 @@ class Qwen2vlStreamPlugin(BasePlugin):
         return mm_inputs
 
     '''
-    接下来都是为了加速数据集的预处理，不然视频训练太慢了
+    接下来都是为了加速数据集的预处理，不然预处理太慢了
     '''
-    def  _get_fake_mm_inputs(
+    def _get_fake_mm_inputs(
         self,
         images: Sequence["ImageInput"],
         videos: Sequence["VideoInput"],
@@ -917,11 +917,11 @@ class Qwen2vlStreamPlugin(BasePlugin):
                 time = message['time']
                 video_time_segs.append(time)
 
-        # import pdb; pdb.set_trace()
-        # print("获取视频尺寸")
+        import pdb; pdb.set_trace()
+        print("获取视频尺寸")
 
-        mm_inputs = self._get_mm_inputs(images, videos, processor, video_time_segs)
-        # mm_inputs = self._get_fake_mm_inputs(images, videos, processor, video_time_segs)
+        # mm_inputs = self._get_mm_inputs(images, videos, processor, video_time_segs)
+        mm_inputs = self._get_fake_mm_inputs(images, videos, processor, video_time_segs)
 
         image_grid_thw = mm_inputs.get("image_grid_thw", [])
         video_grid_thw = mm_inputs.get("video_grid_thw", [])
@@ -1022,8 +1022,8 @@ class Qwen2vlStreamPluginV2(BasePlugin):
         video_maxlen: int = kwargs.get("video_maxlen")
         total_frames = video_stream.frames
         sample_frames = float(video_stream.duration * video_stream.time_base) * video_fps
-        # sample_frames = min(total_frames, video_maxlen, sample_frames)
-        sample_frames = min(total_frames, sample_frames)
+        sample_frames = min(total_frames, video_maxlen, sample_frames)
+        # sample_frames = min(total_frames, sample_frames)
         return math.floor(sample_frames)
 
     @override

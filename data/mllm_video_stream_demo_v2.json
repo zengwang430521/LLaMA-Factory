@@ -43,6 +43,9 @@
       }
     ],
     "videos": [
+      "mllm_demo_data/1.mp4",
+      "mllm_demo_data/1.mp4",
+      "mllm_demo_data/1.mp4",
       "mllm_demo_data/1.mp4"
     ]
   },
@@ -68,7 +71,7 @@
         "time": [2.0, 100000.0]
       },
       {
-        "content": "<video>What's in the video?",
+        "content": "What's in the video?",
         "role": "user",
         "time": [100000.0, 100000.0]
       },
@@ -79,6 +82,7 @@
       }
     ],
     "videos": [
+      "mllm_demo_data/3.mp4",
       "mllm_demo_data/3.mp4"
     ]
   }
