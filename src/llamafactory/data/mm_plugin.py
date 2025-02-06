@@ -1301,7 +1301,6 @@ class Qwen2vlStreamPluginV2(BasePlugin):
                 # print('Debug: 设置content_stream')
                 frame_num = video_grid_thw[num_video_tokens][0]
                 frame_seqlen = video_grid_thw[num_video_tokens][1:].prod() // merge_length if self.expand_mm_tokens else 1
-                # import pdb; pdb.set_trace()
                 video_content = (self.video_token * (frame_seqlen - 1) + FRAME_END_TOKEN) * frame_num
                 content_stream = content_stream.replace(VIDEO_PLACEHOLDER, f"<|vision_start|>{video_content}<|vision_end|>", 1)
 
