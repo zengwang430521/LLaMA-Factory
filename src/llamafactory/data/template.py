@@ -1157,7 +1157,7 @@ _register_template(
 
 
 _register_template(
-    name="qwen2_vl_stream_v1",
+    name="qwen2_vl_stream",
     format_user=StringFormatter(slots=["<|im_start|>user\n{{content}}<|im_end|>\n"]),
     format_system=StringFormatter(slots=["<|im_start|>system\n{{content}}<|im_end|>\n"]),
     format_assistant=StringFormatter(slots=["<|im_start|>assistant\n", "{{content}}", {"eos_token"}]),
@@ -1186,7 +1186,7 @@ _register_template(
     format_separator=EmptyFormatter(slots=["\n"]),
     default_system="You are a helpful assistant.",
     stop_words=["<|im_end|>"],
-    mm_plugin=get_mm_plugin(name="qwen2_vl_stream", image_token="<|image_pad|>", video_token="<|video_pad|>"),
+    mm_plugin=get_mm_plugin(name="qwen2_vl_stream_v2", image_token="<|image_pad|>", video_token="<|video_pad|>"),
 )
 
 
