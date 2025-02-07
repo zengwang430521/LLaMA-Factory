@@ -1164,6 +1164,8 @@ class Qwen2vlStreamPluginV2(BasePlugin):
                         video_fps=getattr(processor, "video_fps", 2.0),
                         video_maxlen=getattr(processor, "video_maxlen", 64),
                     )
+                    sample_indices = np.linspace(0, total_frames - 1, sample_frames).astype(np.int32)
+                    sample_times = np.linspace(0, float(video_stream.duration * video_stream.time_base), sample_frames)
                 except:
                     # 有些视频缺少信息，只能算出来
                     print(f'Error in loading: {video}')
@@ -1177,10 +1179,10 @@ class Qwen2vlStreamPluginV2(BasePlugin):
                     sample_frames = min(total_frames, video_maxlen, sample_frames)
                     # sample_frames = min(total_frames, sample_frames)
                     sample_frames = math.floor(sample_frames)
+                    sample_indices = np.linspace(0, total_frames - 1, sample_frames).astype(np.int32)
+                    sample_times = np.linspace(0, duration, sample_frames)
 
 
-                sample_indices = np.linspace(0, total_frames - 1, sample_frames).astype(np.int32)
-                sample_times = np.linspace(0, float(video_stream.duration * video_stream.time_base), sample_frames)
                 sample_indices_seg, sample_times_seg = [], []
                 for idx, t in zip(sample_indices, sample_times):
                     if t_start <= t <= t_end:
