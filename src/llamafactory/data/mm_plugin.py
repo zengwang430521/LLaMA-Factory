@@ -1,4 +1,5 @@
 import math
+import os.path
 from copy import deepcopy
 from io import BytesIO
 from typing import TYPE_CHECKING, Dict, List, Optional, Sequence, Tuple, TypedDict, Union
@@ -1152,6 +1153,9 @@ class Qwen2vlStreamPluginV2(BasePlugin):
             frame_times = []
             for video, time_seg in zip(videos, video_time_segs):
                 t_start, t_end = time_seg
+                if not os.path.exists(video):
+                    print(video)
+                    import pdb;pdb.set_trace()
                 container = av.open(video, "r")
                 video_stream = next(stream for stream in container.streams if stream.type == "video")
                 frame_width, frame_height = video_stream.codec_context.width, video_stream.codec_context.height
@@ -1313,7 +1317,6 @@ class Qwen2vlStreamPluginV2(BasePlugin):
             raise ValueError(f"The number of images does not match the number of {IMAGE_PLACEHOLDER} tokens.")
 
         if len(videos) != num_video_tokens:
-            import pdb; pdb.set_trace()
             raise ValueError(f"The number of videos does not match the number of {VIDEO_PLACEHOLDER} tokens.")
 
         return messages
