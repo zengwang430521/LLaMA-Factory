@@ -358,27 +358,31 @@ def preprocess_supervised_dataset(
 
         elif data_args.template == 'qwen2_vl_stream_v2':
             # qwen2_vl_stream 对话数据不进行验证, 并且需要额外的stream_labels
-            input_ids, labels, stream_labels, video_time_segs = _encode_supervised_stream_example_v2(
-                prompt=examples["_prompt"][i],
-                response=examples["_response"][i],
-                system=examples["_system"][i],
-                tools=examples["_tools"][i],
-                images=examples["_images"][i] or [],
-                videos=examples["_videos"][i] or [],
-                template=template,
-                tokenizer=tokenizer,
-                processor=processor,
-                cutoff_len=data_args.cutoff_len,
-                train_on_prompt=data_args.train_on_prompt,
-                mask_history=data_args.mask_history,
-            )
-            model_inputs["input_ids"].append(input_ids)
-            model_inputs["attention_mask"].append([1] * len(input_ids))
-            model_inputs["labels"].append(labels)
-            model_inputs["images"].append(examples["_images"][i])
-            model_inputs["videos"].append(examples["_videos"][i])
-            model_inputs["stream_labels"].append(stream_labels)
-            model_inputs["video_time_segs"].append(video_time_segs)
+            # 数据集中少量视频文件有问题，放弃这些数据
+            try:
+                input_ids, labels, stream_labels, video_time_segs = _encode_supervised_stream_example_v2(
+                    prompt=examples["_prompt"][i],
+                    response=examples["_response"][i],
+                    system=examples["_system"][i],
+                    tools=examples["_tools"][i],
+                    images=examples["_images"][i] or [],
+                    videos=examples["_videos"][i] or [],
+                    template=template,
+                    tokenizer=tokenizer,
+                    processor=processor,
+                    cutoff_len=data_args.cutoff_len,
+                    train_on_prompt=data_args.train_on_prompt,
+                    mask_history=data_args.mask_history,
+                )
+                model_inputs["input_ids"].append(input_ids)
+                model_inputs["attention_mask"].append([1] * len(input_ids))
+                model_inputs["labels"].append(labels)
+                model_inputs["images"].append(examples["_images"][i])
+                model_inputs["videos"].append(examples["_videos"][i])
+                model_inputs["stream_labels"].append(stream_labels)
+                model_inputs["video_time_segs"].append(video_time_segs)
+            except:
+                print(f'Skip broken data!!!:{examples}.')
         else:
             if len(examples["_prompt"][i]) % 2 != 1 or len(examples["_response"][i]) != 1:
                 logger.warning_rank0(
