@@ -1157,12 +1157,28 @@ class Qwen2vlStreamPluginV2(BasePlugin):
                 video_stream = next(stream for stream in container.streams if stream.type == "video")
                 frame_width, frame_height = video_stream.codec_context.width, video_stream.codec_context.height
 
-                total_frames = video_stream.frames
-                sample_frames = self._get_video_sample_frames(
-                    video_stream,
-                    video_fps=getattr(processor, "video_fps", 2.0),
-                    video_maxlen=getattr(processor, "video_maxlen", 64),
-                )
+                try:
+                    total_frames = video_stream.frames
+                    sample_frames = self._get_video_sample_frames(
+                        video_stream,
+                        video_fps=getattr(processor, "video_fps", 2.0),
+                        video_maxlen=getattr(processor, "video_maxlen", 64),
+                    )
+                except:
+                    # 有些视频缺少信息，只能算出来
+                    print(f'Error in loading: {video}')
+                    import pdb; pdb.set_trace()
+                    duration = container.duration / 1e6
+                    fps = float(video_stream.average_rate)
+                    total_frames = math.floor(duration * fps)
+                    video_fps = getattr(processor, "video_fps", 2.0),
+                    video_maxlen = getattr(processor, "video_maxlen", 64),
+                    sample_frames = duration * video_fps
+                    sample_frames = min(total_frames, video_maxlen, sample_frames)
+                    # sample_frames = min(total_frames, sample_frames)
+                    sample_frames = math.floor(sample_frames)
+
+
                 sample_indices = np.linspace(0, total_frames - 1, sample_frames).astype(np.int32)
                 sample_times = np.linspace(0, float(video_stream.duration * video_stream.time_base), sample_frames)
                 sample_indices_seg, sample_times_seg = [], []
