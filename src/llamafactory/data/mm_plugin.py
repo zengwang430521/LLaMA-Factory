@@ -1171,8 +1171,8 @@ class Qwen2vlStreamPluginV2(BasePlugin):
                     duration = container.duration / 1e6
                     fps = float(video_stream.average_rate)
                     total_frames = math.floor(duration * fps)
-                    video_fps = getattr(processor, "video_fps", 2.0),
-                    video_maxlen = getattr(processor, "video_maxlen", 64),
+                    video_fps = getattr(processor, "video_fps", 2.0)
+                    video_maxlen = getattr(processor, "video_maxlen", 64)
                     sample_frames = duration * video_fps
                     sample_frames = min(total_frames, video_maxlen, sample_frames)
                     # sample_frames = min(total_frames, sample_frames)
