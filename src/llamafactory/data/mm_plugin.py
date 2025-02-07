@@ -1168,8 +1168,8 @@ class Qwen2vlStreamPluginV2(BasePlugin):
                     sample_times = np.linspace(0, float(video_stream.duration * video_stream.time_base), sample_frames)
                 except:
                     # 有些视频缺少信息，只能算出来
-                    print(f'Error in loading: {video}')
-                    import pdb; pdb.set_trace()
+                    # print(f'Error in loading: {video}')
+                    # import pdb; pdb.set_trace()
                     duration = container.duration / 1e6
                     fps = float(video_stream.average_rate)
                     total_frames = math.floor(duration * fps)
