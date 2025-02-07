@@ -382,7 +382,7 @@ def preprocess_supervised_dataset(
                 model_inputs["stream_labels"].append(stream_labels)
                 model_inputs["video_time_segs"].append(video_time_segs)
             except:
-                print(f'Skip broken data!!!:{examples}.')
+                print(f'Skip broken data!!!:{examples["_videos"][i]}.')
         else:
             if len(examples["_prompt"][i]) % 2 != 1 or len(examples["_response"][i]) != 1:
                 logger.warning_rank0(
