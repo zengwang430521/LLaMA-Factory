@@ -225,11 +225,8 @@ def _encode_supervised_stream_example_v2(
         if VIDEO_PLACEHOLDER in content:
             time = message['time']
             video_time_segs.append(time)
-    try:
-        messages = template.mm_plugin.process_messages(prompt + response, images, videos, processor)
-    except:
-        import pdb; pdb.set_trace()
 
+    messages = template.mm_plugin.process_messages(prompt + response, images, videos, processor)
     input_ids, labels = template.mm_plugin.process_token_ids([], [], images, videos, tokenizer, processor)
 
     # TODO: format 应该放在别的地方，先暂时放在这里了
