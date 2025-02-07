@@ -1182,7 +1182,6 @@ class Qwen2vlStreamPluginV2(BasePlugin):
                     sample_indices = np.linspace(0, total_frames - 1, sample_frames).astype(np.int32)
                     sample_times = np.linspace(0, duration, sample_frames)
 
-
                 sample_indices_seg, sample_times_seg = [], []
                 for idx, t in zip(sample_indices, sample_times):
                     if t_start <= t <= t_end:
