@@ -1,4 +1,5 @@
 cd /afs/zengwang/projects/task_define_service/LLaMA-Factory
+export PYTHONPATH=$PYTHONPATH:/afs/zengwang/projects/task_define_service/LLaMA-Factory/src
 
 NPROC_PER_NODE=8
 NNODES=1

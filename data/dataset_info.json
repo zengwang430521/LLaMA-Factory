@@ -251,7 +251,7 @@
   },
 
   "llava_video_0_30s_youtube_cap_stream_v2_10k": {
-    "file_name": "processed/LLaVA-Video-178K/v2/sample/0_30_s_youtube_cap_v0_1_qa_processed_10000.json",
+    "file_name": "processed/LLaVA-Video-178K/v2/sample/0_30_s_youtube_v0_1_cap_processed_10000.json",
     "formatting": "sharegpt_stream",
     "columns": {
       "messages": "messages",
