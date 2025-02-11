@@ -35,6 +35,8 @@ for src_item in tqdm(src_data):
     if query_time > video_start_time:
         video_message = {"role": "user", "content": "<video>", "time": [video_start_time, query_time]}
         messages.append(video_message)
+        videos.append(video_path)
+
     query_message = {"role": "user", "content": instruction["content"], "time": [query_time, query_time]}
     messages.append(query_message)
     last_time = query_time
