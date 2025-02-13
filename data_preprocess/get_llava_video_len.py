@@ -4,7 +4,7 @@ from os.path import join
 from tqdm import tqdm
 import subprocess
 import json
-import tqdm
+from tqdm import tqdm
 
 
 def get_video_duration_ffprobe(video_path):
