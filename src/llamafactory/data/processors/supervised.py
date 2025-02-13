@@ -226,7 +226,7 @@ def _encode_supervised_stream_example_v2(
             time = message['time']
             video_time_segs.append(time)
 
-    import pdb; pdb.set_trace()
+    # import pdb; pdb.set_trace()
     messages, frame_idxs, frame_times = template.mm_plugin.process_messages(prompt + response, images, videos, processor)
     input_ids, labels = template.mm_plugin.process_token_ids([], [], images, videos, tokenizer, processor)
 
