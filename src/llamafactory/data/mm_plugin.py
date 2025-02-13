@@ -1231,9 +1231,8 @@ class Qwen2vlStreamPluginV2(BasePlugin):
             grid_thw = _process_images_shape(len(sample_frame_shapes), new_width, new_height, image_processor)
             video_grid_thw.append(torch.tensor(grid_thw))
 
-            frame_times, frame_idxs = [], []
-            frame_times.append(sample_times[::2])
             frame_idxs.append(sample_idxs)
+            frame_times.append(sample_times[::2])
 
         mm_inputs["video_grid_thw"] = video_grid_thw
         mm_inputs["frame_times"] = frame_times
