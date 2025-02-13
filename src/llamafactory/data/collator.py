@@ -93,8 +93,8 @@ class MultiModalDataCollatorForSeq2Seq(DataCollatorForSeq2Seq):
     def __call__(self, features: Sequence[Dict[str, Any]]) -> Dict[str, "torch.Tensor"]:
         # import pdb; pdb.set_trace()
         # print("Debug: 读取视频/图片")
-        flag_stream = (isinstance(self.template.mm_plugin, Qwen2vlStreamPlugin) or
-                       isinstance(self.template.mm_plugin, Qwen2vlStreamPluginV2))
+        flag_stream_v1 = isinstance(self.template.mm_plugin, Qwen2vlStreamPlugin)
+        flag_stream_v2 = isinstance(self.template.mm_plugin, Qwen2vlStreamPluginV2)
 
         batch_images, batch_videos, batch_imglens, batch_vidlens, batch_input_ids = [], [], [], [], []
         for feature in features:
@@ -118,20 +118,20 @@ class MultiModalDataCollatorForSeq2Seq(DataCollatorForSeq2Seq):
                 features[0]["input_ids"] = features[0]["input_ids"] + fake_input_ids
                 features[0]["attention_mask"] = features[0]["attention_mask"] + [0] * len(fake_input_ids)
                 features[0]["labels"] = features[0]["labels"] + [IGNORE_INDEX] * len(fake_input_ids)
-                if flag_stream:
+                if flag_stream_v1 or flag_stream_v2:
                     features[0]["stream_labels"] = features[0]["stream_labels"] + [IGNORE_INDEX] * len(fake_input_ids)
             else:
                 features[0]["input_ids"] = fake_input_ids + features[0]["input_ids"]
                 features[0]["attention_mask"] = [0] * len(fake_input_ids) + features[0]["attention_mask"]
                 features[0]["labels"] = [IGNORE_INDEX] * len(fake_input_ids) + features[0]["labels"]
-                if flag_stream:
+                if flag_stream_v1 or flag_stream_v2:
                     features[0]["stream_labels"] = [IGNORE_INDEX] * len(fake_input_ids) + features[0]["stream_labels"]
 
             batch_images = fake_images
             batch_imglens[0] = 1
             batch_input_ids[0] = features[0]["input_ids"]
 
-        if flag_stream:
+        if flag_stream_v1:
             # stream labels 需要特别处理
             batch_video_time_segs = []
             batch_stream_labels = []
@@ -141,6 +141,18 @@ class MultiModalDataCollatorForSeq2Seq(DataCollatorForSeq2Seq):
                 batch_stream_labels.append(feature.pop("stream_labels", None))
             mm_inputs = self.template.mm_plugin.get_mm_inputs(
                 batch_images, batch_videos, batch_imglens, batch_vidlens, batch_input_ids, self.processor, batch_video_time_segs
+            )
+        elif flag_stream_v2:
+            # stream labels 需要特别处理
+            batch_frame_idxs, batch_frame_times = [], []
+            for feature in features:
+                frame_idxs = feature.pop("frame_idxs", None) or []
+                frame_times = feature.pop("frame_times", None) or []
+                batch_frame_idxs.extend(frame_idxs)
+                batch_frame_times.extend(frame_times)
+
+            mm_inputs = self.template.mm_plugin.get_mm_inputs(
+                batch_images, batch_videos, batch_imglens, batch_vidlens, batch_input_ids, self.processor, batch_frame_idxs, batch_frame_times
             )
         else:
             mm_inputs = self.template.mm_plugin.get_mm_inputs(
@@ -152,7 +164,7 @@ class MultiModalDataCollatorForSeq2Seq(DataCollatorForSeq2Seq):
             for i, feature in enumerate(features):
                 feature["token_type_ids"] = token_type_ids[i]
 
-        if flag_stream:
+        if flag_stream_v1 or flag_stream_v2:
             stream_features = copy.deepcopy(features)
             for stream_feature, stream_labels in zip(stream_features, batch_stream_labels):
                 stream_feature["labels"] = stream_labels

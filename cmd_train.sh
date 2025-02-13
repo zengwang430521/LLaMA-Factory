@@ -43,7 +43,8 @@ torchrun $DISTRIBUTED_ARGS src/train.py \
 --cutoff_len 4096 \
 --num_train_epochs 1 \
 --save_steps 500 \
---output_dir work_dirs/stream_v2_lora_1 \
+--stream_loss_factor 2 \
+--output_dir work_dirs/stream_v2_lora_2 \
 --dataset \
 MMDuetIT_dvc_stream_v2_25k,\
 MMDuetIT_magqa_stream_v2_25k,\

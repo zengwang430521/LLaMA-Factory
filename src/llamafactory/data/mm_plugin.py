@@ -993,6 +993,10 @@ class Qwen2vlStreamPlugin(BasePlugin):
         return self._get_mm_inputs(images, videos, processor, video_time_segs)
 
 
+
+
+
+
 class Qwen2vlStreamPluginV2(BasePlugin):
     @override
     def _preprocess_image(self, image: "ImageObject", **kwargs) -> "ImageObject":
@@ -1028,45 +1032,21 @@ class Qwen2vlStreamPluginV2(BasePlugin):
     def _regularize_videos(
             self,
             videos: Sequence["VideoInput"],
-            video_time_segs: Sequence["List"],
+            video_sample_idxs: Sequence["List"],
             **kwargs) -> List[List["ImageObject"]]:
 
         results = []
-        frame_times = []
-        for video, time_seg in zip(videos, video_time_segs):
-            t_start, t_end = time_seg
+        for video, sample_indices_seg in zip(videos, video_sample_idxs):
             container = av.open(video, "r")
             video_stream = next(stream for stream in container.streams if stream.type == "video")
-            total_frames = video_stream.frames
-            sample_frames = self._get_video_sample_frames(video_stream, **kwargs)
-            sample_indices = np.linspace(0, total_frames - 1, sample_frames).astype(np.int32)
-            sample_times = np.linspace(0, float(video_stream.duration * video_stream.time_base), sample_frames)
-
-            sample_indices_seg, sample_times_seg = [], []
-            for idx, t in zip(sample_indices, sample_times):
-                if t_start <= t <= t_end:
-                    sample_indices_seg.append(idx)
-                    sample_times_seg.append(t)
-            video_maxlen: int = kwargs.get("video_maxlen")
-            if len(sample_indices_seg) > video_maxlen:
-                sample_indices_seg = sample_indices_seg[-video_maxlen:]
-                sample_times_seg = sample_times_seg[-video_maxlen:]
-
             frames: List["ImageObject"] = []
             container.seek(0)
             for frame_idx, frame in enumerate(container.decode(video_stream)):
                 if frame_idx in sample_indices_seg:
                     frames.append(frame.to_image())
-
-            if len(frames) % 2 != 0:  # qwen2-vl requires even number of frames
-                frames.append(frames[-1])
-                sample_times_seg.append(sample_times_seg[-1])
-
             frames = self._regularize_images(frames, **kwargs)
             results.append(frames)
-            frame_times.append(sample_times_seg)
-
-        return results, frame_times
+        return results
 
     @override
     def _get_mm_inputs(
@@ -1074,7 +1054,7 @@ class Qwen2vlStreamPluginV2(BasePlugin):
         images: Sequence["ImageInput"],
         videos: Sequence["VideoInput"],
         processor: "ProcessorMixin",
-        video_time_segs: Sequence["List"],
+        video_sample_idxs: Sequence["List"],
     ) -> Dict[str, "torch.Tensor"]:
         r"""
         Processes visual inputs.
@@ -1099,9 +1079,9 @@ class Qwen2vlStreamPluginV2(BasePlugin):
             input_dict["images"] = images
 
         if len(videos) != 0:
-            videos, frame_times = self._regularize_videos(
+            videos = self._regularize_videos(
                 videos,
-                video_time_segs=video_time_segs,
+                video_sample_idxs=video_sample_idxs,
                 image_resolution=getattr(processor, "video_resolution", 128 * 128),
                 video_fps=getattr(processor, "video_fps", 2.0),
                 video_maxlen=getattr(processor, "video_maxlen", 64),
@@ -1116,13 +1096,12 @@ class Qwen2vlStreamPluginV2(BasePlugin):
                 mm_inputs.update(video_processor(input_dict["videos"], return_tensors="pt"))
         elif input_dict.get("images") is not None or input_dict.get("videos") is not None:  # same processor (qwen2-vl)
             mm_inputs.update(image_processor(**input_dict, return_tensors="pt"))
-            if input_dict.get("videos") is not None:
-                mm_inputs['frame_times'] = [torch.FloatTensor(t[::2]) for t in frame_times]
 
         return mm_inputs
 
     '''
-    接下来都是为了加速数据集的预处理，不然视频训练太慢了
+    这个函数是为了加速数据集的预处理，并不实际读取视频内容
+    仅仅用于process_messages中， videos 和 video_time_segs 只能来自单条对话数据
     '''
     def _get_fake_mm_inputs(
         self,
@@ -1145,86 +1124,36 @@ class Qwen2vlStreamPluginV2(BasePlugin):
             mm_inputs.update(image_processor(input_dict["images"], return_tensors="pt"))
 
         # 视频部分简单处理
-        def get_video_grid_thw():
-            video_grid_thw = []
+        # 先收集视频信息
+        video_infos = {}
+        for video in videos:
+            if video in video_infos.keys():
+                continue
+            container = av.open(video, "r")
+            video_stream = next(stream for stream in container.streams if stream.type == "video")
+            frame_width, frame_height = video_stream.codec_context.width, video_stream.codec_context.height
+            total_frames = video_stream.frames
+            duration = float(video_stream.duration * video_stream.time_base)
+            fps = float(total_frames) / duration
+            video_infos[video] = {
+                "width": frame_width,
+                "height": frame_height,
+                "duration": duration,
+                "frame_num": total_frames,
+                "fps": fps
+            }
 
-            # _regularize_videos() 中的过程
-            video_frame_shapes = []
-            frame_times = []
-            for video, time_seg in zip(videos, video_time_segs):
-                t_start, t_end = time_seg
-                container = av.open(video, "r")
-                video_stream = next(stream for stream in container.streams if stream.type == "video")
-                frame_width, frame_height = video_stream.codec_context.width, video_stream.codec_context.height
+        # 先处理一下time_seg
+        total_duration = 0
+        for i in range(len(video_time_segs)):
+            video = videos[i]
+            video_duration = video_infos[video]["duration"]
+            t_start, t_end = video_time_segs[i]
+            t_start, t_end = max(t_start, 0), min(t_end, video_duration)
+            total_duration += t_end - t_start
+            video_time_segs[i] = [t_start, t_end]
 
-                total_frames = video_stream.frames
-                sample_frames = self._get_video_sample_frames(
-                    video_stream,
-                    video_fps=getattr(processor, "video_fps", 2.0),
-                    video_maxlen=getattr(processor, "video_maxlen", 64),
-                )
-                sample_indices = np.linspace(0, total_frames - 1, sample_frames).astype(np.int32)
-                sample_times = np.linspace(0, float(video_stream.duration * video_stream.time_base), sample_frames)
-
-                # try:
-                #     total_frames = video_stream.frames
-                #     sample_frames = self._get_video_sample_frames(
-                #         video_stream,
-                #         video_fps=getattr(processor, "video_fps", 2.0),
-                #         video_maxlen=getattr(processor, "video_maxlen", 64),
-                #     )
-                #     sample_indices = np.linspace(0, total_frames - 1, sample_frames).astype(np.int32)
-                #     sample_times = np.linspace(0, float(video_stream.duration * video_stream.time_base), sample_frames)
-                # except:
-                #     # 有些视频缺少信息，只能算出来
-                #     # import pdb; pdb.set_trace()
-                #     print(f'Error in loading: {video}')
-                #     duration = container.duration / 1e6
-                #     fps = float(video_stream.average_rate)
-                #     total_frames = math.floor(duration * fps)
-                #     video_fps = getattr(processor, "video_fps", 2.0)
-                #     video_maxlen = getattr(processor, "video_maxlen", 64)
-                #     sample_frames = duration * video_fps
-                #     sample_frames = min(total_frames, video_maxlen, sample_frames)
-                #     # sample_frames = min(total_frames, sample_frames)
-                #     sample_frames = math.floor(sample_frames)
-                #     sample_indices = np.linspace(0, total_frames - 1, sample_frames).astype(np.int32)
-                #     sample_times = np.linspace(0, duration, sample_frames)
-
-
-                sample_indices_seg, sample_times_seg = [], []
-                for idx, t in zip(sample_indices, sample_times):
-                    if t_start <= t <= t_end:
-                        sample_indices_seg.append(idx)
-                        sample_times_seg.append(t)
-                video_maxlen = getattr(processor, "video_maxlen", 64)
-                if len(sample_indices_seg) > video_maxlen:
-                    sample_indices_seg = sample_indices_seg[-video_maxlen:]
-                    sample_times_seg = sample_times_seg[-video_maxlen:]
-
-                # 不需要真的读取视频
-                # frames: List["ImageObject"] = []
-                # container.seek(0)
-                # for frame_idx, frame in enumerate(container.decode(video_stream)):
-                #     if frame_idx in sample_indices_seg:
-                #         frames.append(frame.to_image())
-
-                if len(sample_times_seg) % 2 != 0:
-                    sample_times_seg.append(sample_times_seg[-1])
-
-                sample_frame_shapes = [(frame_width, frame_height)] * len(sample_times_seg)
-                sample_frame_shapes = _regularize_images_shape(sample_frame_shapes, image_resolution=getattr(processor, "video_resolution", 128 * 128))
-
-                # video_frame_shapes.append(sample_frame_shapes)
-                # frame_times.append(sample_times_seg)
-
-                # image_processor 过程
-                new_width, new_height = sample_frame_shapes[0]
-                grid_thw = _process_images_shape(len(sample_frame_shapes), new_width, new_height, image_processor)
-                video_grid_thw.append(torch.tensor(grid_thw))
-                frame_times.append(sample_times_seg[::2])
-            return video_grid_thw, frame_times
-
+        # 计算每段的shape和frame index
         def _regularize_images_shape(image_shapes, image_resolution):
             output_shapes = []
             for width, height in image_shapes:
@@ -1263,9 +1192,50 @@ class Qwen2vlStreamPluginV2(BasePlugin):
             grid_h, grid_w = resized_height // image_processor.patch_size, resized_width // image_processor.patch_size
             return grid_t, grid_h, grid_w
 
-        video_grid_thw, frame_times = get_video_grid_thw()
+
+        # _regularize_videos() 中的过程
+        video_fps = getattr(processor, "video_fps", 2.0)
+        video_maxlen = getattr(processor, "video_maxlen", 64)
+        video_grid_thw = []
+        frame_times, frame_idxs = [], []
+
+        # 给每段分配帧数
+        for video, time_seg in zip(videos, video_time_segs):
+            video_info = video_infos[video]
+            frame_width, frame_height = video_info["width"], video_info["height"]
+            real_fps = video_info["fps"]
+            video_duration = video_info["duration"]
+            total_frames = video_info['frame_num']
+
+            # 先计算这一段需要采样多少帧
+            t_start, t_end = time_seg
+            seg_duration = t_end - t_start
+            frame_num = min(seg_duration * video_fps, seg_duration * real_fps)
+            frame_num = min(frame_num, video_maxlen * seg_duration / total_duration)
+            frame_num = math.floor(frame_num)
+            if frame_num % 2 != 0:
+                # 必须是偶数
+                frame_num += 1
+
+            sample_times = np.linspace(t_start, t_end, frame_num, endpoint=False)
+            sample_idxs = (sample_times * real_fps).round().astype(np.int32)
+            sample_idxs = sample_idxs.clip(min=0, max=total_frames-1)
+
+            sample_frame_shapes = [(frame_width, frame_height)] * len(sample_idxs)
+            sample_frame_shapes = _regularize_images_shape(sample_frame_shapes, image_resolution=getattr(processor, "video_resolution", 128 * 128))
+
+            # image_processor 过程
+            new_width, new_height = sample_frame_shapes[0]
+            grid_thw = _process_images_shape(len(sample_frame_shapes), new_width, new_height, image_processor)
+            video_grid_thw.append(torch.tensor(grid_thw))
+
+            frame_times, frame_idxs = [], []
+            frame_times.append(sample_times[::2])
+            frame_idxs.append(sample_idxs)
+
         mm_inputs["video_grid_thw"] = video_grid_thw
         mm_inputs["frame_times"] = frame_times
+        mm_inputs["frame_idxs"] = frame_idxs
         return mm_inputs
 
 
@@ -1331,7 +1301,6 @@ class Qwen2vlStreamPluginV2(BasePlugin):
                 frame_seqlen = video_grid_thw[num_video_tokens][1:].prod() // merge_length if self.expand_mm_tokens else 1
                 video_content = (self.video_token * (frame_seqlen - 1) + FRAME_END_TOKEN) * frame_num
                 content_stream = content_stream.replace(VIDEO_PLACEHOLDER, f"<|vision_start|>{video_content}<|vision_end|>", 1)
-
                 num_video_tokens += 1
 
             message["content"] = content
@@ -1343,8 +1312,16 @@ class Qwen2vlStreamPluginV2(BasePlugin):
         if len(videos) != num_video_tokens:
             raise ValueError(f"The number of videos does not match the number of {VIDEO_PLACEHOLDER} tokens.")
 
-        return messages
+        # 必须在这个过程中把video sample index计算清楚, 也作为返回
+        frame_idxs = mm_inputs.get("frame_idxs", [])
+        frame_times = mm_inputs.get("frame_times", [])
 
+        return messages, frame_idxs, frame_times
+
+
+    '''
+    这个函数用于collator中，需要实际读取视频内容
+    '''
     @override
     def get_mm_inputs(
         self,
@@ -1354,11 +1331,16 @@ class Qwen2vlStreamPluginV2(BasePlugin):
         vidlens: Sequence[int],
         batch_ids: Sequence[List[int]],
         processor: Optional["ProcessorMixin"],
-        video_time_segs: Sequence["List"],
+        video_sample_idxs: Sequence["List"],
     ) -> Dict[str, Union[List[int], "torch.Tensor"]]:
         # import pdb; pdb.set_trace()
         self._validate_input(images, videos)
-        return self._get_mm_inputs(images, videos, processor, video_time_segs)
+        return self._get_mm_inputs(images, videos, processor, video_sample_idxs)
+
+
+
+
+
 
 
 
