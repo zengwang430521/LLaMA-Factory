@@ -18,8 +18,6 @@ def get_video_duration_ffprobe(video_path):
     return float(duration)
 
 
-video_path = "example.mp4"
-print(get_video_duration_ffprobe(video_path))  # 输出秒数，例如 123.45
 video_duration_dict = {}
 src_dir = 'data/LLaVA-Video-178K'
 for root, dirs, files in os.walk(src_dir):
