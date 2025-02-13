@@ -1111,7 +1111,7 @@ class Qwen2vlStreamPluginV2(BasePlugin):
         processor: "ProcessorMixin",
         video_time_segs: Sequence["List"],
     ):
-        import pdb; pdb.set_trace()
+        # import pdb; pdb.set_trace()
         '''图片部分正常处理'''
         image_processor: "BaseImageProcessor" = getattr(processor, "image_processor")
         input_dict = {"images": None}  # default key
