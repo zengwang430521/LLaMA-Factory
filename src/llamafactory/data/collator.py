@@ -150,12 +150,12 @@ class MultiModalDataCollatorForSeq2Seq(DataCollatorForSeq2Seq):
         elif flag_stream_v2:
             # stream labels 需要特别处理
             batch_frame_idxs, batch_frame_times = [], []
+            batch_stream_labels = []
             for feature in features:
                 frame_idxs = feature.pop("frame_idxs", None) or []
                 frame_times = feature.pop("frame_times", None) or []
                 batch_frame_idxs.extend(frame_idxs)
                 batch_frame_times.extend(frame_times)
-
             mm_inputs = self.template.mm_plugin.get_mm_inputs(
                 batch_images, batch_videos, batch_imglens, batch_vidlens, batch_input_ids, self.processor, batch_frame_idxs
             )
