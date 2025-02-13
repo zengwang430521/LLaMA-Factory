@@ -109,7 +109,12 @@ class MultiModalDataCollatorForSeq2Seq(DataCollatorForSeq2Seq):
         if self.processor is not None and sum(batch_imglens) == 0:  # avoid process hanging in zero3/fsdp case
             fake_messages = [{"role": "user", "content": IMAGE_PLACEHOLDER}]
             fake_images = [Image.new("RGB", (64, 64), (255, 255, 255))]
-            fake_messages = self.template.mm_plugin.process_messages(fake_messages, fake_images, [], self.processor)
+
+            if flag_stream_v2:
+                fake_messages, _, _ = self.template.mm_plugin.process_messages(fake_messages, fake_images, [], self.processor)
+            else:
+                fake_messages = self.template.mm_plugin.process_messages(fake_messages, fake_images, [], self.processor)
+
             fake_input_ids = self.tokenizer.encode(fake_messages[0]["content"], add_special_tokens=False)
             fake_input_ids, _ = self.template.mm_plugin.process_token_ids(
                 fake_input_ids, None, fake_images, [], self.tokenizer, self.processor
