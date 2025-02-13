@@ -29,7 +29,7 @@ for root, dirs, files in os.walk(src_dir):
             video_duration = get_video_duration_ffprobe(video_path)
             video_duration_dict[video_path] = video_duration
         except:
-            print(f'ERROR: video_path')
+            print(f'ERROR: {video_path}')
 
 with open('llava_video_len.json', 'w') as f:
     json.dump(f, ensure_ascii=False)
