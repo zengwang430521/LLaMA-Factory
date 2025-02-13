@@ -157,7 +157,7 @@ class MultiModalDataCollatorForSeq2Seq(DataCollatorForSeq2Seq):
                 batch_frame_times.extend(frame_times)
 
             mm_inputs = self.template.mm_plugin.get_mm_inputs(
-                batch_images, batch_videos, batch_imglens, batch_vidlens, batch_input_ids, self.processor, batch_frame_idxs, batch_frame_times
+                batch_images, batch_videos, batch_imglens, batch_vidlens, batch_input_ids, self.processor, batch_frame_idxs
             )
         else:
             mm_inputs = self.template.mm_plugin.get_mm_inputs(
