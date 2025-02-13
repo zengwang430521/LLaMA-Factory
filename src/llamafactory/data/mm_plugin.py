@@ -1068,6 +1068,7 @@ class Qwen2vlStreamPluginV2(BasePlugin):
 
         It holds num_patches == torch.prod(image_grid_thw)
         """
+        import pdb; pdb.set_trace()
         image_processor: "BaseImageProcessor" = getattr(processor, "image_processor")
         video_processor: "BaseImageProcessor" = getattr(processor, "video_processor", image_processor)
         input_dict = {"images": None}  # default key
@@ -1110,6 +1111,7 @@ class Qwen2vlStreamPluginV2(BasePlugin):
         processor: "ProcessorMixin",
         video_time_segs: Sequence["List"],
     ):
+        import pdb; pdb.set_trace()
         '''图片部分正常处理'''
         image_processor: "BaseImageProcessor" = getattr(processor, "image_processor")
         input_dict = {"images": None}  # default key
@@ -1333,7 +1335,6 @@ class Qwen2vlStreamPluginV2(BasePlugin):
         processor: Optional["ProcessorMixin"],
         video_sample_idxs: Sequence["List"],
     ) -> Dict[str, Union[List[int], "torch.Tensor"]]:
-        import pdb; pdb.set_trace()
         self._validate_input(images, videos)
         return self._get_mm_inputs(images, videos, processor, video_sample_idxs)
 
