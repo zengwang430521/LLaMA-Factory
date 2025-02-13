@@ -1068,7 +1068,7 @@ class Qwen2vlStreamPluginV2(BasePlugin):
 
         It holds num_patches == torch.prod(image_grid_thw)
         """
-        import pdb; pdb.set_trace()
+        # import pdb; pdb.set_trace()
         image_processor: "BaseImageProcessor" = getattr(processor, "image_processor")
         video_processor: "BaseImageProcessor" = getattr(processor, "video_processor", image_processor)
         input_dict = {"images": None}  # default key
