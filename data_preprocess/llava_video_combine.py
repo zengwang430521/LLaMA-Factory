@@ -10,8 +10,8 @@ import math
 tar_dir = '/home/SENSETIME/zengwang/myprojects/task_define_service/data/LLaVA-Video-178K/processed/stitch_v1'
 os.makedirs(tar_dir, exist_ok=True)
 
-question_type = 'oe'
-# question_type = 'mc'
+# question_type = 'oe'
+question_type = 'mc'
 short_threshold = 8
 target_num = 20000
 
@@ -23,10 +23,12 @@ with open(duration_file, 'r', encoding='utf-8') as f:
     duartion_dict = json.load(f)
 
 short_videos = set([])
+all_videos = []
 for video in duartion_dict:
-    if duartion_dict[video] < short_threshold:
-        short_videos.add(video)
-
+    if '.' in os.path.basename(video):
+        all_videos.append(video)
+        if duartion_dict[video] < short_threshold:
+            short_videos.add(video)
 
 # 获取问题
 short_src_data = []
@@ -53,7 +55,7 @@ role_transfer_dict = {
 
 end_src_data = random.sample(short_src_data, min(target_num, len(short_src_data)))
 qa_per_src = math.ceil(1.0 * target_num / len(end_src_data))
-start_videos = random.sample(list(duartion_dict.keys()), len(end_src_data))
+start_videos = random.sample(all_videos, len(end_src_data))
 end_time = 100000  #用一个比较大的值表示视频末尾
 
 tar_data = []
