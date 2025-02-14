@@ -30,4 +30,4 @@ for root, dirs, files in os.walk(src_dir):
             print(f'ERROR: {video_path}')
 
 with open('llava_video_len.json', 'w') as f:
-    json.dump(f, ensure_ascii=False)
+    json.dump(video_duration_dict, f, ensure_ascii=False)
