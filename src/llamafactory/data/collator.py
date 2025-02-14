@@ -156,6 +156,7 @@ class MultiModalDataCollatorForSeq2Seq(DataCollatorForSeq2Seq):
                 frame_times = feature.pop("frame_times", None) or []
                 batch_frame_idxs.extend(frame_idxs)
                 batch_frame_times.extend(frame_times)
+                batch_stream_labels.append(feature.pop("stream_labels", None))
             mm_inputs = self.template.mm_plugin.get_mm_inputs(
                 batch_images, batch_videos, batch_imglens, batch_vidlens, batch_input_ids, self.processor, batch_frame_idxs
             )
