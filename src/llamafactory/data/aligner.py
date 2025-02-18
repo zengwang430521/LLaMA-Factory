@@ -279,10 +279,15 @@ def convert_sharegpt_stream(
 
     # stream 数据存在1个问题多轮回答的形式，不严格按照user，assistant交错的方式组织，所以跳过验证
     for turn_idx, message in enumerate(messages):
+        # time 统一用float, 防止不匹配
+        time = message.get('time', None)
+        if time is not None:
+            time = [float(t) for t in time]
         aligned_messages.append(
             {"role": tag_mapping[message[dataset_attr.role_tag]],
              "content": message[dataset_attr.content_tag],
-             "time": message.get('time', None)}
+             # "time": message.get('time', None)}
+             "time": time}
         )
 
     if dataset_attr.kto_tag and isinstance(example[dataset_attr.kto_tag], bool):  # kto example

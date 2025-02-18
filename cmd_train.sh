@@ -36,7 +36,7 @@ torchrun $DISTRIBUTED_ARGS src/train.py \
 --freeze_vision_tower \
 --finetuning_type lora \
 --lora_rank 8 \
---additional_target stream_head \
+--additional_target stream_head,lm_head \
 --video_resolution 65536 \
 --video_fps 2 \
 --video_maxlen 64 \
