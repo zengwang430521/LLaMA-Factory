@@ -1270,6 +1270,8 @@ class Qwen2vlStreamPluginV2(BasePlugin):
         image_grid_thw = mm_inputs.get("image_grid_thw", [])
         video_grid_thw = mm_inputs.get("video_grid_thw", [])
 
+        import pdb; pdb.set_trace()
+
         num_image_tokens, num_video_tokens = 0, 0
         messages = deepcopy(messages)
         for message in messages:
