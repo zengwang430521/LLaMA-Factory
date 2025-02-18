@@ -187,6 +187,7 @@ class MultiModalDataCollatorForSeq2Seq(DataCollatorForSeq2Seq):
             features: Dict[str, "torch.Tensor"] = super().__call__(features)
 
         if self.model is not None and hasattr(self.model, "get_rope_index"):  # for qwen2vl mrope
+            import pdb; pdb.set_trace()
             features["position_ids"], features["rope_deltas"] = self.model.get_rope_index(
                 input_ids=features["input_ids"],
                 image_grid_thw=mm_inputs.get("image_grid_thw", None),
