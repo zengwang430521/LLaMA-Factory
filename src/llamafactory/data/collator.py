@@ -111,7 +111,7 @@ class MultiModalDataCollatorForSeq2Seq(DataCollatorForSeq2Seq):
             fake_images = [Image.new("RGB", (64, 64), (255, 255, 255))]
 
             if flag_stream_v2:
-                fake_messages, _, _ = self.template.mm_plugin.process_messages(fake_messages, fake_images, [], self.processor)
+                fake_messages = self.template.mm_plugin.process_messages(fake_messages, fake_images, [], self.processor)[0]
             else:
                 fake_messages = self.template.mm_plugin.process_messages(fake_messages, fake_images, [], self.processor)
 
@@ -151,12 +151,17 @@ class MultiModalDataCollatorForSeq2Seq(DataCollatorForSeq2Seq):
             # stream labels 需要特别处理
             batch_frame_idxs, batch_frame_times = [], []
             batch_stream_labels = []
+            batch_video_grid_thw = []
             for feature in features:
                 frame_idxs = feature.pop("frame_idxs", None) or []
                 frame_times = feature.pop("frame_times", None) or []
+                v_grid_thw = feature.pop("video_grid_thw", None) or []
                 batch_frame_idxs.extend(frame_idxs)
                 batch_frame_times.extend(frame_times)
+                batch_video_grid_thw.extend(v_grid_thw)
+
                 batch_stream_labels.append(feature.pop("stream_labels", None))
+
             mm_inputs = self.template.mm_plugin.get_mm_inputs(
                 batch_images, batch_videos, batch_imglens, batch_vidlens, batch_input_ids, self.processor, batch_frame_idxs
             )
@@ -187,11 +192,16 @@ class MultiModalDataCollatorForSeq2Seq(DataCollatorForSeq2Seq):
             features: Dict[str, "torch.Tensor"] = super().__call__(features)
 
         if self.model is not None and hasattr(self.model, "get_rope_index"):  # for qwen2vl mrope
-            import pdb; pdb.set_trace()
+            # import pdb; pdb.set_trace()
+            if flag_stream_v2:
+                video_grid_thw = torch.LongTensor(batch_video_grid_thw)
+            else:
+                video_grid_thw = mm_inputs.get("video_grid_thw", None)
+
             features["position_ids"], features["rope_deltas"] = self.model.get_rope_index(
                 input_ids=features["input_ids"],
                 image_grid_thw=mm_inputs.get("image_grid_thw", None),
-                video_grid_thw=mm_inputs.get("video_grid_thw", None),
+                video_grid_thw=video_grid_thw,
                 attention_mask=features["attention_mask"],
             )
 

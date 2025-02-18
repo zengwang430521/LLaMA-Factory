@@ -298,6 +298,36 @@
 
 
 
+  "llava_video_0_30s_stitch_mc_v2_10k": {
+    "file_name": "processed/LLaVA-Video-178K/stitch_v2/0_30s_mc_10505.json",
+    "formatting": "sharegpt_stream",
+    "columns": {
+      "messages": "messages",
+      "videos": "videos"
+    },
+    "tags": {
+      "role_tag": "role",
+      "content_tag": "content",
+      "user_tag": "user",
+      "assistant_tag": "assistant"
+    }
+  },
+
+
+  "llava_video_0_30s_stitch_oe_v2_20k": {
+    "file_name": "processed/LLaVA-Video-178K/stitch_v2/0_30s_oe_19928.json",
+    "formatting": "sharegpt_stream",
+    "columns": {
+      "messages": "messages",
+      "videos": "videos"
+    },
+    "tags": {
+      "role_tag": "role",
+      "content_tag": "content",
+      "user_tag": "user",
+      "assistant_tag": "assistant"
+    }
+  },
 
 
 

@@ -113,7 +113,8 @@ def _encode_supervised_stream_example(
         content = message["content"]
         if VIDEO_PLACEHOLDER in content:
             time = message['time']
-            video_time_segs.append(time)
+            for i in range(0, len(time), 2):
+                video_time_segs.append([time[i], time[i + 1]])
 
     messages = template.mm_plugin.process_messages(prompt + response, images, videos, processor)
 
@@ -224,10 +225,11 @@ def _encode_supervised_stream_example_v2(
         content = message["content"]
         if VIDEO_PLACEHOLDER in content:
             time = message['time']
-            video_time_segs.append(time)
+            for i in range(0, len(time), 2):
+                video_time_segs.append([time[i], time[i+1]])
 
     # import pdb; pdb.set_trace()
-    messages, frame_idxs, frame_times = template.mm_plugin.process_messages(prompt + response, images, videos, processor)
+    messages, frame_idxs, frame_times, video_grid_thw = template.mm_plugin.process_messages(prompt + response, images, videos, processor)
     input_ids, labels = template.mm_plugin.process_token_ids([], [], images, videos, tokenizer, processor)
 
     # TODO: format 应该放在别的地方，先暂时放在这里了
@@ -317,7 +319,7 @@ def _encode_supervised_stream_example_v2(
         labels = labels[:cutoff_len]
         stream_labels = stream_labels[:cutoff_len]
 
-    return input_ids, labels, stream_labels, frame_idxs, frame_times
+    return input_ids, labels, stream_labels, frame_idxs, frame_times, video_grid_thw
 
 
 
@@ -362,7 +364,7 @@ def preprocess_supervised_dataset(
             # qwen2_vl_stream 对话数据不进行验证, 并且需要额外的stream_labels
             # 数据集中少量视频文件有问题，放弃这些数据
             try:
-                input_ids, labels, stream_labels, frame_idxs, frame_times = _encode_supervised_stream_example_v2(
+                input_ids, labels, stream_labels, frame_idxs, frame_times, video_grid_thw = _encode_supervised_stream_example_v2(
                     prompt=examples["_prompt"][i],
                     response=examples["_response"][i],
                     system=examples["_system"][i],
@@ -384,7 +386,7 @@ def preprocess_supervised_dataset(
                 model_inputs["stream_labels"].append(stream_labels)
                 model_inputs["frame_idxs"].append(frame_idxs)
                 model_inputs["frame_times"].append(frame_times)
-
+                model_inputs["video_grid_thw"].append(video_grid_thw)
             except:
                 print(f'Skip broken data!!!:{examples["_videos"][i]}.')
                 # import pdb; pdb.set_trace()

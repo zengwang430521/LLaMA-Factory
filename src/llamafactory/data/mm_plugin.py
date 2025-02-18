@@ -916,7 +916,8 @@ class Qwen2vlStreamPlugin(BasePlugin):
             content = message["content"]
             if VIDEO_PLACEHOLDER in content:
                 time = message['time']
-                video_time_segs.append(time)
+                for i in range(0, len(time), 2):
+                    video_time_segs.append([time[i], time[i + 1]])
 
         # import pdb; pdb.set_trace()
         # print("获取视频尺寸")
@@ -1259,7 +1260,8 @@ class Qwen2vlStreamPluginV2(BasePlugin):
             content = message["content"]
             if VIDEO_PLACEHOLDER in content:
                 time = message['time']
-                video_time_segs.append(time)
+                for i in range(0, len(time), 2):
+                    video_time_segs.append([time[i], time[i + 1]])
 
         # import pdb; pdb.set_trace()
         # print("获取视频尺寸")
@@ -1270,8 +1272,25 @@ class Qwen2vlStreamPluginV2(BasePlugin):
         image_grid_thw = mm_inputs.get("image_grid_thw", [])
         video_grid_thw = mm_inputs.get("video_grid_thw", [])
 
-        import pdb; pdb.set_trace()
+        # 必须先判断是不是需要进行视频的拼接
+        # import pdb; pdb.set_trace()
+        num_image_tokens, num_video_tokens = 0, 0
+        messages = deepcopy(messages)
+        for message in messages:
+            content = message["content"]
+            while "<video><+><video>" in content:
+                # 2段视频拼接到一起
+                assert (video_grid_thw[num_video_tokens][1:] == video_grid_thw[num_video_tokens + 1][1:]).all()
+                video_grid_thw[num_video_tokens][0] += video_grid_thw[num_video_tokens + 1][0]
+                del video_grid_thw[num_video_tokens + 1]
+                content = content.replace("<video><+><video>", "<video>", 1)
+            message["content"] = content
 
+            while "<video>" in content:
+                content = content.replace("<video>", "", 1)
+                num_video_tokens += 1
+
+        # 正常插入占位token
         num_image_tokens, num_video_tokens = 0, 0
         messages = deepcopy(messages)
         for message in messages:
@@ -1312,14 +1331,15 @@ class Qwen2vlStreamPluginV2(BasePlugin):
         if len(images) != num_image_tokens:
             raise ValueError(f"The number of images does not match the number of {IMAGE_PLACEHOLDER} tokens.")
 
-        if len(videos) != num_video_tokens:
+        if len(video_grid_thw) != num_video_tokens:
             raise ValueError(f"The number of videos does not match the number of {VIDEO_PLACEHOLDER} tokens.")
 
         # 必须在这个过程中把video sample index计算清楚, 也作为返回
+        # 因为涉及到多段视频拼接成完整的一段，所以video_grid_thw也必须返回
         frame_idxs = mm_inputs.get("frame_idxs", [])
         frame_times = mm_inputs.get("frame_times", [])
 
-        return messages, frame_idxs, frame_times
+        return messages, frame_idxs, frame_times, video_grid_thw
 
 
     '''
