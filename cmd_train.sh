@@ -54,7 +54,7 @@ llava_video_0_30s_academic_cap_stream_v2_10k,\
 llava_video_0_30s_youtube_mc_stream_v2_5k,\
 llava_video_0_30s_youtube_oe_stream_v2_10k,\
 llava_video_0_30s_youtube_cap_stream_v2_10k,\
-llava_video_0_30s_stitch_mc_10k,\
-llava_video_0_30s_stitch_oe_20k
+llava_video_0_30s_stitch_mc_v2_10k,\
+llava_video_0_30s_stitch_oe_v2_20k
 
 #    --mask_history \
