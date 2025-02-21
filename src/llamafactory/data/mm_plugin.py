@@ -1216,6 +1216,7 @@ class Qwen2vlStreamPluginV2(BasePlugin):
             frame_num = min(seg_duration * video_fps, seg_duration * real_fps)
             frame_num = min(frame_num, video_maxlen * seg_duration / total_duration)
             frame_num = math.floor(frame_num)
+            frame_num = max(frame_num, 2)   # 最少采集2帧
             if frame_num % 2 != 0:
                 # 必须是偶数
                 frame_num += 1
