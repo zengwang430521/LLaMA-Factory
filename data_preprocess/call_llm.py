@@ -394,8 +394,23 @@ def call_openai_model(messages, model="gpt-4o", **kwargs):
     return result
 
 
-
-
+from openai import OpenAI
+def call_vllm_model(messages, model, base_url='http://localhost:8000/v1', **kwargs):
+    # Modify OpenAI's API key and API base to use vLLM's API server.
+    openai_api_key = "anykey"  #
+    openai_api_base = base_url  # 部署服务的ip地址与端口
+    client = OpenAI(
+        api_key=openai_api_key,
+        base_url=openai_api_base,
+    )
+    chat_response = client.chat.completions.create(
+        messages=messages,
+        model=model,
+        **kwargs
+    )
+    result = chat_response.dict()
+    response = result['choices'][0]['message']['content']
+    return response
 
 
 
