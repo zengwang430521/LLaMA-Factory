@@ -88,7 +88,7 @@ if __name__ == '__main__':
         data = json.load(f)
     data = data[10000:]     #跳过gpt4o的部分
 
-    target_nums = 10
+    target_nums = 10000
     data = data[:target_nums]
 
     save_dir = '/home/SENSETIME/zengwang/myprojects/task_define_service/data/shot2story/qas'
