@@ -84,14 +84,14 @@ def get_clip_frame(clip_name):
 
 
 if __name__ == '__main__':
-    with open('/home/SENSETIME/zengwang/myprojects/task_define_service/data/shot2story/134k_full_train.json', 'r', encoding='utf-8') as f:
+    with open('/afs/zengwang/projects/task_define_service/data/shot2story/134k_full_train.json', 'r', encoding='utf-8') as f:
         data = json.load(f)
     data = data[10000:]     #跳过gpt4o的部分
 
     target_nums = 10000
     data = data[:target_nums]
 
-    save_dir = '/home/SENSETIME/zengwang/myprojects/task_define_service/data/shot2story/qas'
+    save_dir = '/afs/zengwang/projects/task_define_service/data/shot2story/qas_ds_70b'
     os.makedirs(save_dir, exist_ok=True)
 
     # for item in data:
