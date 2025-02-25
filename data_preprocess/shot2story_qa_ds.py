@@ -60,7 +60,12 @@ def generate_qa(item, save_dir):
     # response, cost = result["response"], result["cost"]
 
     print(prompt)
-    response = call_vllm_model(messages=messages, model='/afs/zengwang/ckpt/DeepSeek-R1-Distill-Llama-70B')
+    response = call_vllm_model(
+        messages=messages,
+        model='/afs/zengwang/ckpt/DeepSeek-R1-Distill-Llama-70B',
+        base_url='http://10.210.0.43:8000/v1'
+
+    )
     result = {"response": response, "cost": 0}
     print(response)
     with open(output_file, 'w', encoding='utf-8') as f:
@@ -84,23 +89,32 @@ def get_clip_frame(clip_name):
 
 
 if __name__ == '__main__':
-    with open('/afs/zengwang/projects/task_define_service/data/shot2story/134k_full_train.json', 'r', encoding='utf-8') as f:
-        data = json.load(f)
-    data = data[10000:]     #跳过gpt4o的部分
+    src_file = '/afs/zengwang/projects/task_define_service/data/shot2story/134k_full_train.json'
+    save_dir = '/afs/zengwang/projects/task_define_service/data/shot2story/qas_ds_70b'
 
-    target_nums = 10000
+    src_file = '/home/SENSETIME/zengwang/myprojects/task_define_service/data/shot2story/134k_full_train.json'
+    save_dir = '/home/SENSETIME/zengwang/myprojects/task_define_service/data/shot2story/qas_ds_70b'
+
+
+    with open(src_file, 'r', encoding='utf-8') as f:
+        data = json.load(f)
+
+    data = data[10000:]     # 跳过gpt4o的部分
+    target_nums = 20*1000
     data = data[:target_nums]
 
-    save_dir = '/afs/zengwang/projects/task_define_service/data/shot2story/qas_ds_70b'
     os.makedirs(save_dir, exist_ok=True)
 
     # for item in data:
-    #     generate_qa_tmp(item, save_dir)
+    #     generate_qa(item, save_dir)
 
     max_workers = 10
     with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
         futures = [executor.submit(generate_qa_tmp, item, save_dir) for item in data]
         concurrent.futures.wait(futures)
+
+
+
 
     # # 计算消耗
     # num_all, cost_all = 0, 0
