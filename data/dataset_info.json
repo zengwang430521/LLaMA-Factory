@@ -478,6 +478,40 @@
   },
 
 
+  "SSR_COIN_choice": {
+    "file_name": "processed/COIN/SSR_COIN_choice.json",
+    "formatting": "sharegpt_stream",
+    "columns": {
+      "messages": "messages",
+      "videos": "videos"
+    },
+    "tags": {
+      "role_tag": "role",
+      "content_tag": "content",
+      "user_tag": "user",
+      "assistant_tag": "assistant"
+    }
+  },
+
+  "REC_perception_test": {
+    "file_name": "processed/perception_test/REC_trainval.json",
+    "formatting": "sharegpt_stream",
+    "columns": {
+      "messages": "messages",
+      "videos": "videos"
+    },
+    "tags": {
+      "role_tag": "role",
+      "content_tag": "content",
+      "user_tag": "user",
+      "assistant_tag": "assistant"
+    }
+  },
+
+
+
+
+
 
 
 
