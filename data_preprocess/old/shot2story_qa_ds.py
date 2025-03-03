@@ -8,58 +8,44 @@ from tqdm import tqdm
 import re
 import random
 import math
-from copy import deepcopy
 
 
-prompt_template = """\
-A video consists of multiple clips. Tts content is:
+prompt_template = """
+There is a video, its content is:
 {whole_caption}
 
-The content of these clips is: {clip_captions}.
+This video consists of several clips. The content of these clips is: {clip_captions}
 
-Your task is to identify individuals who appear in multiple clips and generate a question about them. \
-The question should be asked in a clip where the people appear, \
-but it must not be answerable based on the information available up to that clip. \
-Instead, the answer should only become clear in a later clip where the people appear again.\
+Please imagine a scenario: \
+Tom asks a question about the video. \
+Bob answers the question while watching the video. \
+Bob responds immediately after seeing the relevant clips. \
+If there are multiple relevant clips, Bob will response for every related clips. \
+Bob will supplement his answer with new information when he encounters a new relevant clip.
 
-Please ensure the individuals envolved in your question and answer is the same.
-If there is not individual who appear in multiple clips, \
-you can give up this task an response with an empty dict. 
+Now you need to generate the questions and answers in this process.
+
+Please propose a single question that ordinary people would ask. \
+The question must can be definitely answered from the clip content. \
+Do not generate question that can not be solved with the clip content. \
+This question must be related to multiple clips but not all clips. 
+
+Please also give the related clips and answers for the question. \
+All your answers constitute a complete answer. \
+So do not repeat the contents appeared in previous answers. \
+Only include new information in the related clip.
+
+Note that: 
+1. The question and answers should not be related to the voice.
+2. In the question and answers, treat the video as a single coherent and complete video.\
+Do not regard the clips as separate parts.
 
 
-Requirements:
-The question and answer must be based on the clip captions.
-Do not mention clip in your questions or answers.
-The question and answer must not be related to voice or audio content.
-
-Please provide your response in the following JSON format:
+Please reply in the following json format:
 {{
-  "question_clip": <the clip where the question is asked>,
-  "question": "<the generated question>",
-  "answer_clip": <the clip where the answer is found>,
-  "answer": "<the answer to the question>"
-}}
-
-The following is some examples:
-{{
-  "question_clip": 1,
-  "question": "The man whose suit is has deeper color turn his head and look at some, what is he looking at?",
-  "answer_clip": 2,
-  "answer": "A painting on the wall.",
-}}
-
-{{
-  "question_clip": 2,
-  "question": "The astronauts wake up after a long space journey, what abnormal thing do they find?",
-  "answer_clip": 4,
-  "answer": "One of the astronauts turns into a strange creature.",
-}}
-
-{{
-  "question_clip": 4,
-  "question": "The man throw the yellow life float into the sea, what action does he take next with it?",
-  "answer_clip": 7,
-  "answer": "He jumps to the sea and climb to the yellow life float.",
+  "question": "the question you ask",
+  "related_clips": list of related clip index
+  "answers": list of the answers for related clips. Do not mention clip in the answer.
 }}
 """
 
@@ -147,14 +133,15 @@ if __name__ == '__main__':
         save_dir = f'/home/SENSETIME/zengwang/myprojects/task_define_service/data/shot2story/qas_{MODEL}'
         with open(src_file, 'r', encoding='utf-8') as f:
             data = json.load(f)
-        # if MODEL != 'gpt-4o':
-        #     data = data[10000:]     # 跳过gpt4o的部分
+        if MODEL != 'gpt-4o':
+            data = data[10000:]     # 跳过gpt4o的部分
+
         target_nums = 20 * 1000
         data = data[:target_nums]
 
     os.makedirs(save_dir, exist_ok=True)
 
-    # max_workers = 100
+    # max_workers = 30
     # with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
     #     futures = [executor.submit(generate_qa_tmp, item, save_dir) for item in data]
     #     concurrent.futures.wait(futures)
@@ -230,7 +217,7 @@ if __name__ == '__main__':
 
     # 处理数据
     tar_data = []
-    tar_file = f'/home/SENSETIME/zengwang/myprojects/task_define_service/data/shot2story/processed/qa_{MODEL}_v2.json'
+    tar_file = f'/home/SENSETIME/zengwang/myprojects/task_define_service/data/shot2story/processed/qa_{MODEL}_v1.json'
     for item in tqdm(data):
         video = item['video']
         result_file = join(save_dir, f"{video}.json")
@@ -251,10 +238,8 @@ if __name__ == '__main__':
         if "</think>" in response:
             response = response.split("</think>")[-1]
         response = response.strip()
-        # if response.startswith('```json'):
-        #     response = response[len("```json"):-len("```")]
-        if '```json' in response:
-            response = response.split('```json')[1].split('```')[0].strip()
+        if response.startswith('```json'):
+            response = response[len("```json"):-len("```")]
 
         try:
             video_info = video_infos[join('data', 'shot2story-videos', video)]
@@ -265,41 +250,38 @@ if __name__ == '__main__':
 
             result = json.loads(response)
             question = result["question"]
-            question_clip = result['question_clip']
-            answer = result['answer']
-            answer_clip = result['answer_clip']
-            if question is None:
-                valid = False
-                continue
+            related_clips = result["related_clips"]
+            answers = result["answers"]
 
+            related_clips, answers = zip(*sorted(zip(related_clips, answers)))
+            related_clips = list(related_clips)
+            answers = list(answers)
+            related_clips = [tmp-1 for tmp in related_clips]
 
-            # 在question clip后半段提问
+            # 在第一个相关片段前提问
             video_path = join('shot2story-videos', video)
-            query_time_range = deepcopy(clip_times[question_clip-1])
-            query_time_range[0] = query_time_range[0] * 0.5 + query_time_range[1] * (1-0.5)    # 只在clip的后50%提问
-            query_time = random.uniform(query_time_range[0], query_time_range[1])
-            query_time = round(query_time)
-
-            answer_time_range = deepcopy(clip_times[answer_clip-1])
-            answer_time_range[0] = answer_time_range[0] * 0.75 + answer_time_range[1] * (1-0.75)    # 在clip的后75%回答
-            answer_time = random.uniform(answer_time_range[0], answer_time_range[1])
-            answer_time = round(answer_time)
-
-
+            first_response_time = clip_times[related_clips[0]][1]
+            query_time = float(random.randint(0, int(math.floor(first_response_time- 1))))
             messages, videos = [], []
             if query_time > 0:
                 messages.append({"role": "user", "content": "<video>", "time": [0.0, query_time]})
                 videos.append(video_path)
             messages.append({"role": "user", "content": question, "time": [query_time, query_time]})
 
-
-            messages.append({"role": "user", "content": "<video>", "time": [query_time, answer_time]})
-            videos.append(video_path)
-            messages.append({"role": "assistant", "content": answer, "time": [answer_time, answer_time]})
-
+            last_time = query_time
+            for related_clip, answer in zip(related_clips, answers):
+                if not isinstance(answer, str):
+                    print(answer)
+                    valid = False
+                    continue
+                response_time = float(clip_times[related_clip][1])
+                messages.append({"role": "user", "content": "<video>", "time": [last_time, response_time]})
+                videos.append(video_path)
+                messages.append({"role": "assistant", "content": answer, "time": [response_time, response_time]})
+                last_time = response_time
 
             # # 剩余的视频如果大于1s，就加入，对于训练stream_head有帮助
-            # # 训练时最后一个message不是assistant时有bug
+            # # 有bug
             # if last_time < video_info['duration'] - 1:
             #     messages.append({"role": "user", "content": "<video>", "time": [last_time,  float(video_info['duration'])]})
             #     videos.append(video_path)
@@ -309,7 +291,6 @@ if __name__ == '__main__':
                 tar_data.append(tar_item)
 
         except:
-            print('-'*100)
             print(response)
             continue
 

@@ -462,6 +462,21 @@
     }
   },
 
+  "shot2story_ds70b_qa_10k": {
+    "file_name": "processed/shot2story/qa_ds_70b_v2.json",
+    "formatting": "sharegpt_stream",
+    "columns": {
+      "messages": "messages",
+      "videos": "videos"
+    },
+    "tags": {
+      "role_tag": "role",
+      "content_tag": "content",
+      "user_tag": "user",
+      "assistant_tag": "assistant"
+    }
+  },
+
 
 
 

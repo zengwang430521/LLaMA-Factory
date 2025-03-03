@@ -301,7 +301,7 @@ def call_chatapi_model(messages, model, **kwargs):
     response = requests.post("https://chatapi.sensenova.cn/v1/llm/chat-completions", headers=headers, json=data)
     response_body = json.loads(response.text)
     resp = response_body["data"]["choices"][0]["message"]
-    return resp
+    return response_body
 
 
 def call_llm_completion(messages, model, **kwargs):
@@ -353,6 +353,23 @@ def call_silionflow_model(messages, model, **kwargs):
     print(response.text)
     return response
 
+
+def call_deepseek_model(messages, model="deepseek-reasoner", **kwargs):
+    client = OpenAI(api_key="sk-6c3a9326219f4b76b365d646f0ed268d", base_url="https://api.deepseek.com")
+
+    response = client.chat.completions.create(
+        model=model,
+        messages=messages,
+        stream=False
+    )
+    response_body = response.dict()
+    prompt_tokens = response_body['usage']['prompt_tokens']
+    completion_tokens = response_body['usage']['completion_tokens']
+    cost = prompt_tokens * 4 * 1e-6 + completion_tokens * 16 * 1e-6
+    
+    response_content = response.choices[0].message.content
+    result = {"response": response_content, "cost":cost}
+    return result
 
 
 from openai import AzureOpenAI
