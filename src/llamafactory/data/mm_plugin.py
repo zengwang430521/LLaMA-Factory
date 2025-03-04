@@ -1251,6 +1251,7 @@ class Qwen2vlStreamPluginV2(BasePlugin):
             video_duration = video_info["duration"]
             total_frames = video_info['frame_num']
 
+            t_start, t_end = time_seg
             sample_times = np.linspace(t_start, t_end, frame_num, endpoint=False)
             sample_idxs = (sample_times * real_fps).round().astype(np.int32)
             sample_idxs = sample_idxs.clip(min=0, max=total_frames-1)
