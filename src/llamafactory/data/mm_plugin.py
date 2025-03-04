@@ -1202,8 +1202,7 @@ class Qwen2vlStreamPluginV2(BasePlugin):
         video_grid_thw = []
 
         # 给每段分配帧数
-        import pdb; pdb.set_trace()
-        print('DEBUG: frame index!')
+
         frame_nums = []
         for video, time_seg in zip(videos, video_time_segs):
             video_info = video_infos[video]
@@ -1228,6 +1227,9 @@ class Qwen2vlStreamPluginV2(BasePlugin):
         current_total = sum(frame_nums)
         # 如果超过，则对各段进行迭代调整，每次从那些帧数大于2的段减少2帧，直到总数不超过总数要求
         while current_total > video_maxlen:
+            import pdb; pdb.set_trace()
+            print('DEBUG: frame index!')
+
             reduced = False
             for i in range(len(frame_nums)):
                 if frame_nums[i] > 2:
