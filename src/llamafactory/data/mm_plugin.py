@@ -1202,6 +1202,8 @@ class Qwen2vlStreamPluginV2(BasePlugin):
         video_grid_thw = []
 
         # 给每段分配帧数
+        import pdb; pdb.set_trace()
+        print('DEBUG: frame index!')
         frame_nums = []
         for video, time_seg in zip(videos, video_time_segs):
             video_info = video_infos[video]
