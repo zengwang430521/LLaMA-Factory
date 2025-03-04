@@ -39,7 +39,7 @@ for subset in ['train', 'valid']:
             print(f'skip:{subset}/{video}.mp4')
             continue
 
-        video_path = f'perception_test/{subset}/{video}.mp4'
+        video_path = f'perception_test/videos/{video}.mp4'
         item = src_data[video]
         action_counts = {}
         for action in item["action_localisation"]:

@@ -1200,9 +1200,9 @@ class Qwen2vlStreamPluginV2(BasePlugin):
         video_fps = getattr(processor, "video_fps", 2.0)
         video_maxlen = getattr(processor, "video_maxlen", 64)
         video_grid_thw = []
-        frame_times, frame_idxs = [], []
 
         # 给每段分配帧数
+        frame_nums = []
         for video, time_seg in zip(videos, video_time_segs):
             video_info = video_infos[video]
             frame_width, frame_height = video_info["width"], video_info["height"]
@@ -1219,7 +1219,33 @@ class Qwen2vlStreamPluginV2(BasePlugin):
             frame_num = max(frame_num, 2)   # 最少采集2帧
             if frame_num % 2 != 0:
                 # 必须是偶数
-                frame_num += 1
+                frame_num -= 1
+            frame_nums.append(frame_num)
+
+        # 此时各段的采样帧数可能加起来超过 video_maxlen
+        current_total = sum(frame_nums)
+        # 如果超过，则对各段进行迭代调整，每次从那些帧数大于2的段减少2帧，直到总数不超过总数要求
+        while current_total > video_maxlen:
+            reduced = False
+            for i in range(len(frame_nums)):
+                if frame_nums[i] > 2:
+                    frame_nums[i] -= 2
+                    current_total -= 2
+                    reduced = True
+                    if current_total <= video_maxlen:
+                        break
+            if not reduced:
+                # 如果所有段都已经是2帧，无法再减少，则退出循环
+                break
+
+        # 确定采样的frame idx
+        frame_times, frame_idxs = [], []
+        for video, time_seg, frame_num in zip(videos, video_time_segs, frame_nums):
+            video_info = video_infos[video]
+            frame_width, frame_height = video_info["width"], video_info["height"]
+            real_fps = video_info["fps"]
+            video_duration = video_info["duration"]
+            total_frames = video_info['frame_num']
 
             sample_times = np.linspace(t_start, t_end, frame_num, endpoint=False)
             sample_idxs = (sample_times * real_fps).round().astype(np.int32)
@@ -1359,9 +1385,6 @@ class Qwen2vlStreamPluginV2(BasePlugin):
     ) -> Dict[str, Union[List[int], "torch.Tensor"]]:
         self._validate_input(images, videos)
         return self._get_mm_inputs(images, videos, processor, video_sample_idxs)
-
-
-
 
 
 
