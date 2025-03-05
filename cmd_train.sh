@@ -42,9 +42,9 @@ torchrun $DISTRIBUTED_ARGS src/train.py \
 --video_maxlen 64 \
 --cutoff_len 4096 \
 --num_train_epochs 1 \
---save_steps 2000 \
+--save_steps 200 \
 --stream_loss_factor 2 \
---output_dir work_dirs/stream_v2_lora_10 \
+--output_dir work_dirs/stream_v2_lora_13 \
 --dataset \
 MMDuetIT_dvc_stream_v2_10k,\
 MMDuetIT_magqa_stream_v2_10k,\
@@ -56,4 +56,6 @@ llava_video_0_30s_youtube_oe_stream_v2_4k,\
 llava_video_0_30s_youtube_cap_stream_v2_4k,\
 llava_video_0_30s_stitch_mc_v2_10k,\
 llava_video_0_30s_stitch_oe_v2_20k,\
-shot2story_ds70b_qa_10k
+shot2story_ds70b_qa_10k,\
+REC_perception_test,\
+SSR_COIN_choice

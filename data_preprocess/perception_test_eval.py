@@ -1,9 +1,10 @@
 import json
+import sys
+
 from tqdm import tqdm
 import random
 import math
 import os
-
 
 query_template = """ 
 In the video, the man/woman is {activity} repetitively. 
@@ -24,10 +25,9 @@ for item in test_data:
         if 'perception_test' in video:
             test_videos.add(os.path.basename(video).split('.mp4')[0])
 
-
-tar_file = f'/home/SENSETIME/zengwang/myprojects/task_define_service/data/perception_test/processed/REC_trainval.json'
+tar_file = f'/home/SENSETIME/zengwang/myprojects/task_define_service/data/perception_test/processed/REC_trainval_ovo_test.json'
 tar_data = []
-
+idx = 1
 for subset in ['train', 'valid']:
     src_file = f'/home/SENSETIME/zengwang/myprojects/task_define_service/data/perception_test/all_{subset}.json'
 
@@ -55,33 +55,31 @@ for subset in ['train', 'valid']:
                 continue
             filtered_action = [action for action in item["action_localisation"] if action['label'] == activity]
 
-            query = query_template.format(activity=activity.lower())
-            first_response_time = filtered_action[0]['timestamps'][1] * 1e-6
-
-            max_query_time = math.floor(first_response_time - 1)
-            max_query_time = max(max_query_time, 0)
-            query_time = float(random.randint(0, int(max_query_time)))
-
-            messages, videos = [], []
-            if query_time > 0:
-                messages.append({"role": "user", "content": "<video>", "time": [0.0, query_time]})
-                videos.append(video_path)
-            messages.append({"role": "user", "content": query, "time": [query_time, query_time]})
-
-            last_time = query_time
+            start_times, end_times, test_infos = [], [], []
+            test_infos.append({"realtime": filtered_action[0]['timestamps'][1]*0.5*1e-6, "count": 0})
             for count, action in enumerate(filtered_action, start=1):
-                answer = str(count)
-                response_time = action['timestamps'][1] * 1e-6
+                start_time, end_time = action['timestamps']
+                start_time, end_time = start_time * 1e-6, end_time * 1e-6
 
-                messages.append({"role": "user", "content": "<video>", "time": [last_time, response_time]})
-                videos.append(video_path)
-                messages.append({"role": "assistant", "content": answer, "time": [response_time, response_time]})
-                last_time = response_time
+                start_times.append(start_time)
+                end_times.append(end_time)
+                test_infos.append({"realtime": end_time, "count": count})
+            test_infos.append({"realtime": end_time + 1, "count": count})
 
-            tar_item = {"messages": messages, "videos": videos}
-            tar_data.append(tar_item)
+            test_data = {
+                "id": idx,
+                "task": "REC",
+                "video": f"data/perception_test_videos/{video}.mp4",
+                "activity": activity.lower(),
+                "start_times": start_times,
+                "end_times": end_times,
+                "test_info": test_infos
+            }
+            tar_data.append(test_data)
+            if len(tar_data) >= 50:
+                os.makedirs(os.path.dirname(tar_file), exist_ok=True)
+                with open(tar_file, 'w', encoding='utf-8') as f:
+                    json.dump(tar_data, f, ensure_ascii=False, indent=2)
+                print(len(tar_data))
 
-os.makedirs(os.path.dirname(tar_file), exist_ok=True)
-with open(tar_file, 'w', encoding='utf-8') as f:
-    json.dump(tar_data, f, ensure_ascii=False, indent=2)
-print(len(tar_data))
+                sys.exit(0)
