@@ -469,7 +469,7 @@ def fill_missing_pos_batch(pos, mask):
 
 
 class Qwen2VLStreamV3(Qwen2VLForConditionalGeneration):
-    config_class = Qwen2VLStreamConfig
+    config_class = Qwen2VLStreamConfigV3
 
     def __init__(self, config):
         super().__init__(config)
