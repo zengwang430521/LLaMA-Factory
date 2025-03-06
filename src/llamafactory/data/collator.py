@@ -126,13 +126,13 @@ class MultiModalDataCollatorForSeq2Seq(DataCollatorForSeq2Seq):
                 features[0]["input_ids"] = features[0]["input_ids"] + fake_input_ids
                 features[0]["attention_mask"] = features[0]["attention_mask"] + [0] * len(fake_input_ids)
                 features[0]["labels"] = features[0]["labels"] + [IGNORE_INDEX] * len(fake_input_ids)
-                if flag_stream_v1 or flag_stream_v2:
+                if flag_stream:
                     features[0]["stream_labels"] = features[0]["stream_labels"] + [IGNORE_INDEX] * len(fake_input_ids)
             else:
                 features[0]["input_ids"] = fake_input_ids + features[0]["input_ids"]
                 features[0]["attention_mask"] = [0] * len(fake_input_ids) + features[0]["attention_mask"]
                 features[0]["labels"] = [IGNORE_INDEX] * len(fake_input_ids) + features[0]["labels"]
-                if flag_stream_v1 or flag_stream_v2:
+                if flag_stream:
                     features[0]["stream_labels"] = [IGNORE_INDEX] * len(fake_input_ids) + features[0]["stream_labels"]
 
             batch_images = fake_images
