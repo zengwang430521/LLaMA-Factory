@@ -343,8 +343,8 @@ def _encode_supervised_stream_example_v3(
     # 所以视频中每帧后都需要加上<|vision_end|><|im_end|>
     # 需要mask掉额外新加的token
 
-    import pdb; pdb.set_trace()
-    print('Debug V3: 产生input_ids, labels, stream_labels')
+    # import pdb; pdb.set_trace()
+    # print('Debug V3: 产生input_ids, labels, stream_labels')
 
     # 判断视频应该怎么分段
     video_time_segs = []

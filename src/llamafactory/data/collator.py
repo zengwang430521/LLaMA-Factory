@@ -24,7 +24,7 @@ from transformers import DataCollatorForSeq2Seq
 
 from ..extras.constants import IGNORE_INDEX, IMAGE_PLACEHOLDER
 from ..extras.packages import is_pillow_available
-from .mm_plugin import Qwen2vlStreamPlugin, Qwen2vlStreamPluginV2
+from .mm_plugin import Qwen2vlStreamPlugin, Qwen2vlStreamPluginV2, Qwen2vlStreamPluginV3
 
 if is_pillow_available():
     from PIL import Image
@@ -196,7 +196,7 @@ class MultiModalDataCollatorForSeq2Seq(DataCollatorForSeq2Seq):
 
         if self.model is not None and hasattr(self.model, "get_rope_index"):  # for qwen2vl mrope
             # import pdb; pdb.set_trace()
-            if flag_stream_v2:
+            if flag_stream_v2 or flag_stream_v3:
                 video_grid_thw = torch.LongTensor(batch_video_grid_thw)
             else:
                 video_grid_thw = mm_inputs.get("video_grid_thw", None)
@@ -217,11 +217,6 @@ class MultiModalDataCollatorForSeq2Seq(DataCollatorForSeq2Seq):
         features.update(mm_inputs)
         if isinstance(features.get("pixel_values"), list):  # for pixtral inputs
             features = features.data  # use default_collate() instead of BatchEncoding.to()
-
-        # stream_v3 用<|im_end|>作为判定点，所以需要在每一帧后加上 <|vision_end|><|im_end|>，并且还需要mask掉这2个token
-        if flag_stream_v3:
-            pass
-
 
         return features
 
