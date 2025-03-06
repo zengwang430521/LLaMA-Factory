@@ -513,8 +513,8 @@ class Qwen2VLStreamV3(Qwen2VLForConditionalGeneration):
         Returns:
         """
 
-        import pdb; pdb.set_trace()
-        print('Debug: 模型forward')
+        # import pdb; pdb.set_trace()
+        # print('Debug: 模型forward')
 
         output_attentions = output_attentions if output_attentions is not None else self.config.output_attentions
         output_hidden_states = (
@@ -588,20 +588,6 @@ class Qwen2VLStreamV3(Qwen2VLForConditionalGeneration):
             causal_mask)
 
 
-        outputs0 = self.model(
-            input_ids=None,
-            position_ids=position_ids,
-            attention_mask=torch.ones_like(attention_mask),
-            past_key_values=past_key_values,
-            inputs_embeds=inputs_embeds,
-            use_cache=use_cache,
-            output_attentions=output_attentions,
-            output_hidden_states=output_hidden_states,
-            return_dict=return_dict,
-        )
-        hidden_states0 = outputs0[0]
-
-
         outputs = self.model(
             input_ids=None,
             position_ids=position_ids,
@@ -613,8 +599,41 @@ class Qwen2VLStreamV3(Qwen2VLForConditionalGeneration):
             output_hidden_states=output_hidden_states,
             return_dict=return_dict,
         )
-
         hidden_states = outputs[0]
+
+        # print("DEBUG")
+        # attention_mask0 = attention_mask.clone()
+        # attention_mask0[:, 501:503] = 1
+        # outputs0 = self.model(
+        #     input_ids=None,
+        #     position_ids=position_ids,
+        #     attention_mask=attention_mask0,
+        #     past_key_values=past_key_values,
+        #     inputs_embeds=inputs_embeds,
+        #     use_cache=use_cache,
+        #     output_attentions=output_attentions,
+        #     output_hidden_states=output_hidden_states,
+        #     return_dict=return_dict,
+        # )
+        # hidden_states0 = outputs0[0]
+        # torch.eq(hidden_states[0, 502, :], hidden_states0[0, 502, :]).all()
+
+        # outputs1 = self.model(
+        #     input_ids=None,
+        #     position_ids=position_ids,
+        #     attention_mask=attention_mask,
+        #     past_key_values=past_key_values,
+        #     inputs_embeds=inputs_embeds,
+        #     use_cache=use_cache,
+        #     output_attentions=output_attentions,
+        #     output_hidden_states=output_hidden_states,
+        #     return_dict=return_dict,
+        # );
+        # hidden_states1 = outputs1[0]
+        # torch.eq(hidden_states[attention_mask==1, :], hidden_states1[attention_mask==1, :]).all()
+        # (attention_mask == 0).nonzero()
+
+
         hidden_states = hidden_states.to(self.lm_head.weight.dtype)
         logits = self.lm_head(hidden_states)
 
@@ -798,7 +817,7 @@ class Qwen2VLStreamV3(Qwen2VLForConditionalGeneration):
             mrope_position_deltas = torch.tensor(mrope_position_deltas, device=input_ids.device).unsqueeze(1)
 
             # 被mask的部分也需要设置 position_ids
-            import pdb; pdb.set_trace()
+            # import pdb; pdb.set_trace()
             position_ids = fill_missing_pos_batch(position_ids, mask=attention_mask)
             return position_ids, mrope_position_deltas
         else:
