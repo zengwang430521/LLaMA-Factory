@@ -513,8 +513,8 @@ class Qwen2VLStreamV3(Qwen2VLForConditionalGeneration):
         Returns:
         """
 
-        import pdb; pdb.set_trace()
-        print('Debug: 模型forward')
+        # import pdb; pdb.set_trace()
+        # print('Debug: 模型forward')
 
         output_attentions = output_attentions if output_attentions is not None else self.config.output_attentions
         output_hidden_states = (
