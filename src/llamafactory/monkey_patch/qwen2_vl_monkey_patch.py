@@ -417,7 +417,7 @@ class Qwen2VLStream(Qwen2VLForConditionalGeneration):
 
 
 AutoConfig.register('qwen2_vl_stream', Qwen2VLStreamConfig)
-AutoConfig.register('qwen2_vl_stream_v2', Qwen2VLStreamConfig)
+# AutoConfig.register('qwen2_vl_stream_v2', Qwen2VLStreamConfig)
 AutoModelForVision2Seq.register(Qwen2VLStreamConfig, Qwen2VLStream)
 
 
