@@ -414,7 +414,7 @@ def _encode_supervised_stream_example_v3(
             tmp_stream_labels[judge_spots[-1]] = int(need_response)
             stream_labels += tmp_stream_labels
 
-            mask = [t != FRAME_PAD_TOKEN for t in encode_elements_stream]
+            mask = [0  if t == frame_pad_id else 1 for t in encode_elements_stream]
             masks += mask
 
         elif message["role"] == Role.ASSISTANT.value:
