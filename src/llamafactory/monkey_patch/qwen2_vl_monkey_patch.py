@@ -426,7 +426,7 @@ AutoModelForVision2Seq.register(Qwen2VLStreamConfig, Qwen2VLStream)
 
 
 class Qwen2VLStreamConfigV3(Qwen2VLConfig):
-    model_type = "qwen2_vl_stream"
+    model_type = "qwen2_vl_stream_v3"
 
     def __init__(self, stream_loss_factor=1.0, **kwargs):
         super().__init__(**kwargs)
