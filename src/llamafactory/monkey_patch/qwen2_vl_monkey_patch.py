@@ -561,7 +561,7 @@ class Qwen2VLStreamV3(Qwen2VLForConditionalGeneration):
 
 
         # 由于部分被mask的token需要参与stream_head的优化，所以他们需要有attn
-        causal_mask = self._update_causal_mask(
+        causal_mask = self.model._update_causal_mask(
             attention_mask, inputs_embeds, cache_position, past_key_values, output_attentions
         )
 
