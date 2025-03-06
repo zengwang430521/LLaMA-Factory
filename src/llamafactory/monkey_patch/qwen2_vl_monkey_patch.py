@@ -441,6 +441,7 @@ def fill_missing_pos_batch(pos, mask):
     对于 mask 为 False 的位置，所有行都使用 pos 第一行计算出的值进行填充，
     填充值为：pos[0, batch, 左侧最近有效索引] + (当前位置索引 - 左侧最近有效索引)。
     """
+    mask = mask.bool()
     batch, n = mask.shape  # batch 和 n 的大小
     # 生成索引 (batch, n)
     idx = torch.arange(n, device=pos.device).unsqueeze(0).expand(batch, n)
@@ -795,3 +796,4 @@ class Qwen2VLStreamV3(Qwen2VLForConditionalGeneration):
 
 AutoConfig.register('qwen2_vl_stream_v3', Qwen2VLStreamConfigV3)
 AutoModelForVision2Seq.register(Qwen2VLStreamConfigV3, Qwen2VLStreamV3)
+
