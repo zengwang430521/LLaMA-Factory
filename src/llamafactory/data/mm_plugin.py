@@ -1405,7 +1405,9 @@ class Qwen2vlStreamPluginV3(Qwen2vlStreamPluginV2):
         videos: Sequence["VideoInput"],
         processor: Optional["ProcessorMixin"],
     ) -> List[Dict[str, str]]:
-        import pdb; pdb.set_trace()
+        # import pdb; pdb.set_trace()
+        # print("DebugV3: process_messages")
+
         self._validate_input(images, videos)
         image_processor: "BaseImageProcessor" = getattr(processor, "image_processor")
         merge_length: int = getattr(image_processor, "merge_size") ** 2
