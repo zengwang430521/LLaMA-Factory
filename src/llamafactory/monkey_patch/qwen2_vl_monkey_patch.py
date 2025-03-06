@@ -457,7 +457,9 @@ def fill_missing_pos_batch(pos, mask):
 
     # 从 pos 第一行中取出有效值，并加上 diff 得到填充值
     # pos[0] 的 shape 为 (batch, n)
-    filled = pos[0].gather(dim=1, index=cum_max) + diff
+    pos_cum_max, _ = torch.cummax(pos, dim=-1)
+    pos_cum_max, _ = pos_cum_max.max(dim=0)
+    filled = pos_cum_max.gather(dim=1, index=cum_max) + diff
 
     # 扩展 mask 到 shape (3, batch, n)
     mask_expanded = mask.unsqueeze(0).expand_as(pos)
@@ -467,6 +469,7 @@ def fill_missing_pos_batch(pos, mask):
     # mask 为 True 的位置保留原 pos 值，否则用 filled 替换
     result = torch.where(mask_expanded, pos, filled_expanded)
     return result
+
 
 
 class Qwen2VLStreamV3(Qwen2VLForConditionalGeneration):
@@ -561,21 +564,32 @@ class Qwen2VLStreamV3(Qwen2VLForConditionalGeneration):
 
 
         # 由于部分被mask的token需要参与stream_head的优化，所以他们需要有attn
-        causal_mask = self.model._update_causal_mask(
-            attention_mask, inputs_embeds, cache_position, past_key_values, output_attentions
+        past_seen_tokens = past_key_values.get_seq_length() if past_key_values is not None else 0
+        cache_position = torch.arange(
+            past_seen_tokens, past_seen_tokens + inputs_embeds.shape[1], device=inputs_embeds.device
         )
+        causal_mask = self.model._update_causal_mask(
+            attention_mask,
+            inputs_embeds,
+            cache_position=cache_position,
+            past_key_values=past_key_values,
+            output_attentions=output_attentions)
 
-        seq_len = causal_mask.shape[-1]
+        bsz, seq_len = attention_mask.shape
         mask_with_indices = torch.cumsum(attention_mask, dim=1)
-        expanded_mask = attention_mask_with_indices[:, None, None, :].expand(bsz, 1, seq_len, seq_len)
+        expanded_mask = mask_with_indices[:, None, None, :].expand(bsz, 1, seq_len, seq_len)
         attention_mask_4d_pad = torch.eq(expanded_mask, expanded_mask.transpose(-1, -2))
-        causal_mask = torch.where(attention_mask_4d_pad, torch.tensor(0, dtype=causal_mask.dtype), causal_mask)
+        attention_mask_4d_pad = attention_mask_4d_pad.int() * torch.tril(torch.ones((seq_len, seq_len), dtype=torch.long, device=attention_mask_4d_pad.device))
+
+        causal_mask = torch.where(
+            attention_mask_4d_pad!=0,
+            torch.tensor(0, dtype=causal_mask.dtype, device=causal_mask.device),
+            causal_mask)
 
 
         outputs = self.model(
             input_ids=None,
             position_ids=position_ids,
-            # attention_mask=attention_mask,
             attention_mask=causal_mask,
             past_key_values=past_key_values,
             inputs_embeds=inputs_embeds,

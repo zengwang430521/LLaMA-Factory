@@ -1,7 +1,7 @@
 import torch
 
 
-def fill_missing_batch(pos, mask):
+def fill_missing_pos_batch(pos, mask):
     """
     pos: torch.LongTensor, shape = (3, batch, n)
     mask: torch.BoolTensor, shape = (batch, n)
@@ -9,6 +9,7 @@ def fill_missing_batch(pos, mask):
     对于 mask 为 False 的位置，所有行都使用 pos 第一行计算出的值进行填充，
     填充值为：pos[0, batch, 左侧最近有效索引] + (当前位置索引 - 左侧最近有效索引)。
     """
+    mask = mask.bool()
     batch, n = mask.shape  # batch 和 n 的大小
     # 生成索引 (batch, n)
     idx = torch.arange(n, device=pos.device).unsqueeze(0).expand(batch, n)
@@ -24,7 +25,9 @@ def fill_missing_batch(pos, mask):
 
     # 从 pos 第一行中取出有效值，并加上 diff 得到填充值
     # pos[0] 的 shape 为 (batch, n)
-    filled = pos[0].gather(dim=1, index=cum_max) + diff
+    pos_cum_max, _ = torch.cummax(pos, dim=-1)
+    pos_cum_max, _ = pos_cum_max.max(dim=0)
+    filled = pos_cum_max.gather(dim=1, index=cum_max) + diff
 
     # 扩展 mask 到 shape (3, batch, n)
     mask_expanded = mask.unsqueeze(0).expand_as(pos)
@@ -46,12 +49,11 @@ mask = torch.tensor([
     [True, True, False, False, True, True, True]   # batch=1 的 mask（不同的情况）
 ])
 
-output = fill_missing_batch(pos, mask)
-print(output)
+output = fill_missing_pos_batch(pos, mask)
+# print(output)
 
-[[1, 1, 2, 2, 2, 0]]
-[[1, 1, 2, 2, 2, 0]]
-[[1, 1, 2, 2, 2, 0]]
-[[1, 1, 2, 2, 2, 0]]
-[[1, 1, 2, 2, 2, 0]]
-[[1, 1, 2, 2, 2, 0]]
+print(pos[:, 0, :])
+print(output[:, 0, :])
+
+print(pos[:, 1, :])
+print(output[:, 1, :])
