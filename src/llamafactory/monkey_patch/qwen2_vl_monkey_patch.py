@@ -1,3 +1,4 @@
+import torch
 from transformers.models.qwen2_vl.modeling_qwen2_vl import *
 from transformers.models import *
 import torch.nn as nn
@@ -585,6 +586,20 @@ class Qwen2VLStreamV3(Qwen2VLForConditionalGeneration):
             attention_mask_4d_pad!=0,
             torch.tensor(0, dtype=causal_mask.dtype, device=causal_mask.device),
             causal_mask)
+
+
+        outputs0 = self.model(
+            input_ids=None,
+            position_ids=position_ids,
+            attention_mask=torch.ones_like(attention_mask),
+            past_key_values=past_key_values,
+            inputs_embeds=inputs_embeds,
+            use_cache=use_cache,
+            output_attentions=output_attentions,
+            output_hidden_states=output_hidden_states,
+            return_dict=return_dict,
+        )
+        hidden_states0 = outputs0[0]
 
 
         outputs = self.model(
