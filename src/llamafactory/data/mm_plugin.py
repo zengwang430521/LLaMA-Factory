@@ -9,7 +9,7 @@ import torch
 from transformers.image_utils import get_image_size, to_numpy_array
 from typing_extensions import override
 
-from ..extras.constants import IGNORE_INDEX, IMAGE_PLACEHOLDER, VIDEO_PLACEHOLDER, DO_RESPONSE_TOKEN, NO_RESPONSE_TOKEN, FRAME_END_TOKEN
+from ..extras.constants import IGNORE_INDEX, IMAGE_PLACEHOLDER, VIDEO_PLACEHOLDER, DO_RESPONSE_TOKEN, NO_RESPONSE_TOKEN, FRAME_END_TOKEN, FRAME_PAD_TOKEN
 from ..extras.packages import is_pillow_available, is_pyav_available, is_transformers_version_greater_than
 
 
@@ -1395,6 +1395,111 @@ class Qwen2vlStreamPluginV2(BasePlugin):
 
 
 
+class Qwen2vlStreamPluginV3(Qwen2vlStreamPluginV2):
+
+    @override
+    def process_messages(
+        self,
+        messages: Sequence[Dict[str, str]],
+        images: Sequence["ImageInput"],
+        videos: Sequence["VideoInput"],
+        processor: Optional["ProcessorMixin"],
+    ) -> List[Dict[str, str]]:
+        import pdb; pdb.set_trace()
+        self._validate_input(images, videos)
+        image_processor: "BaseImageProcessor" = getattr(processor, "image_processor")
+        merge_length: int = getattr(image_processor, "merge_size") ** 2
+
+        # 判断视频应该怎么分段
+        video_time_segs = []
+        for message in messages:
+            content = message["content"]
+            if VIDEO_PLACEHOLDER in content:
+                time = message['time']
+                for i in range(0, len(time), 2):
+                    video_time_segs.append([time[i], time[i + 1]])
+
+        # import pdb; pdb.set_trace()
+        # print("获取视频尺寸")
+
+        # mm_inputs = self._get_mm_inputs(images, videos, processor, video_time_segs)
+        mm_inputs = self._get_fake_mm_inputs(images, videos, processor, video_time_segs)
+
+        image_grid_thw = mm_inputs.get("image_grid_thw", [])
+        video_grid_thw = mm_inputs.get("video_grid_thw", [])
+
+        # 必须先判断是不是需要进行视频的拼接
+        # import pdb; pdb.set_trace()
+        num_image_tokens, num_video_tokens = 0, 0
+        messages = deepcopy(messages)
+        for message in messages:
+            content = message["content"]
+            while "<video><+><video>" in content:
+                # 2段视频拼接到一起
+                assert (video_grid_thw[num_video_tokens][1:] == video_grid_thw[num_video_tokens + 1][1:]).all()
+                video_grid_thw[num_video_tokens][0] += video_grid_thw[num_video_tokens + 1][0]
+                del video_grid_thw[num_video_tokens + 1]
+                content = content.replace("<video><+><video>", "<video>", 1)
+            message["content"] = content
+
+            while "<video>" in content:
+                content = content.replace("<video>", "", 1)
+                num_video_tokens += 1
+
+        # 正常插入占位token
+        num_image_tokens, num_video_tokens = 0, 0
+        messages = deepcopy(messages)
+        for message in messages:
+            content = message["content"]
+            content_stream = deepcopy(message['content'])
+            while IMAGE_PLACEHOLDER in content:
+                if num_image_tokens >= len(image_grid_thw):
+                    raise ValueError(f"`len(images)` is less than the number of {IMAGE_PLACEHOLDER} tokens.")
+
+                image_seqlen = image_grid_thw[num_image_tokens].prod() // merge_length if self.expand_mm_tokens else 1
+                content = content.replace(
+                    IMAGE_PLACEHOLDER, f"<|vision_start|>{self.image_token * image_seqlen}<|vision_end|>", 1
+                )
+                num_image_tokens += 1
+
+            while VIDEO_PLACEHOLDER in content:
+                if num_video_tokens >= len(video_grid_thw):
+                    raise ValueError(f"`len(videos)` is less than the number of {VIDEO_PLACEHOLDER} tokens.")
+                # import pdb; pdb.set_trace()
+                # print('Debug: 设置content_stream')
+
+                # 每一帧最后都需要加上<|vision_end|><|im_end|>
+                frame_num = video_grid_thw[num_video_tokens][0]
+                frame_seqlen = video_grid_thw[num_video_tokens][1:].prod() // merge_length if self.expand_mm_tokens else 1
+                video_content = ("<|vision_start|>" +
+                                 (self.video_token * frame_seqlen + '<|vision_end|><|im_end|>') * (frame_num -1) +
+                                 (self.video_token * frame_seqlen + '<|vision_end|>'))
+
+                mask_content = ("<|vision_start|>" +
+                                 (self.video_token * frame_seqlen + FRAME_PAD_TOKEN * 2) * (frame_num -1) +
+                                 (self.video_token * frame_seqlen + '<|vision_end|>'))
+
+                content = content.replace(VIDEO_PLACEHOLDER, video_content, 1)
+                content_stream = content_stream.replace(VIDEO_PLACEHOLDER, mask_content, 1)
+                num_video_tokens += 1
+            message["content"] = content
+            message["content_stream"] = content_stream
+
+        if len(images) != num_image_tokens:
+            raise ValueError(f"The number of images does not match the number of {IMAGE_PLACEHOLDER} tokens.")
+
+        if len(video_grid_thw) != num_video_tokens:
+            raise ValueError(f"The number of videos does not match the number of {VIDEO_PLACEHOLDER} tokens.")
+
+        # 必须在这个过程中把video sample index计算清楚, 也作为返回
+        # 因为涉及到多段视频拼接成完整的一段，所以video_grid_thw也必须返回
+        frame_idxs = mm_inputs.get("frame_idxs", [])
+        frame_times = mm_inputs.get("frame_times", [])
+
+        return messages, frame_idxs, frame_times, video_grid_thw
+
+
+
 class VideoLlavaPlugin(BasePlugin):
     @override
     def process_messages(
@@ -1549,6 +1654,7 @@ PLUGINS = {
     "qwen2_vl": Qwen2vlPlugin,
     "qwen2_vl_stream": Qwen2vlStreamPlugin,
     "qwen2_vl_stream_v2": Qwen2vlStreamPluginV2,
+    "qwen2_vl_stream_v3": Qwen2vlStreamPluginV3,
     "video_llava": VideoLlavaPlugin,
     "mllama": MllamaPlugin,
 }

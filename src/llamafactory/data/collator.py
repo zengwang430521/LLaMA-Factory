@@ -95,6 +95,9 @@ class MultiModalDataCollatorForSeq2Seq(DataCollatorForSeq2Seq):
         # print("Debug: 读取视频/图片")
         flag_stream_v1 = isinstance(self.template.mm_plugin, Qwen2vlStreamPlugin)
         flag_stream_v2 = isinstance(self.template.mm_plugin, Qwen2vlStreamPluginV2)
+        flag_stream_v3 = isinstance(self.template.mm_plugin, Qwen2vlStreamPluginV3)
+        flag_stream = flag_stream_v1 or flag_stream_v2 or flag_stream_v3
+
 
         batch_images, batch_videos, batch_imglens, batch_vidlens, batch_input_ids = [], [], [], [], []
         for feature in features:
@@ -110,7 +113,7 @@ class MultiModalDataCollatorForSeq2Seq(DataCollatorForSeq2Seq):
             fake_messages = [{"role": "user", "content": IMAGE_PLACEHOLDER}]
             fake_images = [Image.new("RGB", (64, 64), (255, 255, 255))]
 
-            if flag_stream_v2:
+            if flag_stream_v2 or flag_stream_v3:
                 fake_messages = self.template.mm_plugin.process_messages(fake_messages, fake_images, [], self.processor)[0]
             else:
                 fake_messages = self.template.mm_plugin.process_messages(fake_messages, fake_images, [], self.processor)
@@ -147,7 +150,7 @@ class MultiModalDataCollatorForSeq2Seq(DataCollatorForSeq2Seq):
             mm_inputs = self.template.mm_plugin.get_mm_inputs(
                 batch_images, batch_videos, batch_imglens, batch_vidlens, batch_input_ids, self.processor, batch_video_time_segs
             )
-        elif flag_stream_v2:
+        elif flag_stream_v2 or flag_stream_v3:
             # stream labels 需要特别处理
             batch_frame_idxs, batch_frame_times = [], []
             batch_stream_labels = []
@@ -175,7 +178,7 @@ class MultiModalDataCollatorForSeq2Seq(DataCollatorForSeq2Seq):
             for i, feature in enumerate(features):
                 feature["token_type_ids"] = token_type_ids[i]
 
-        if flag_stream_v1 or flag_stream_v2:
+        if flag_stream:
             stream_features = copy.deepcopy(features)
             for stream_feature, stream_labels in zip(stream_features, batch_stream_labels):
                 stream_feature["labels"] = stream_labels
@@ -214,6 +217,11 @@ class MultiModalDataCollatorForSeq2Seq(DataCollatorForSeq2Seq):
         features.update(mm_inputs)
         if isinstance(features.get("pixel_values"), list):  # for pixtral inputs
             features = features.data  # use default_collate() instead of BatchEncoding.to()
+
+        # stream_v3 用<|im_end|>作为判定点，所以需要在每一帧后加上 <|vision_end|><|im_end|>，并且还需要mask掉这2个token
+        if flag_stream_v3:
+            pass
+
 
         return features
 

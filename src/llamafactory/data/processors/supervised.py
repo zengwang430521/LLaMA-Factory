@@ -16,7 +16,7 @@ from collections import defaultdict
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Sequence, Tuple
 
 from ...extras import logging
-from ...extras.constants import IGNORE_INDEX, DO_RESPONSE_TOKEN, NO_RESPONSE_TOKEN, VIDEO_PLACEHOLDER, FRAME_END_TOKEN
+from ...extras.constants import IGNORE_INDEX, DO_RESPONSE_TOKEN, NO_RESPONSE_TOKEN, VIDEO_PLACEHOLDER, FRAME_END_TOKEN, FRAME_PAD_TOKEN
 from .processor_utils import greedy_knapsack, infer_seqlen
 from copy import deepcopy
 
@@ -323,6 +323,135 @@ def _encode_supervised_stream_example_v2(
 
 
 
+
+def _encode_supervised_stream_example_v3(
+    prompt: Sequence[Dict[str, str]],
+    response: Sequence[Dict[str, str]],
+    system: Optional[str],
+    tools: Optional[str],
+    images: Sequence["ImageInput"],
+    videos: Sequence["VideoInput"],
+    template: "Template",
+    tokenizer: "PreTrainedTokenizer",
+    processor: Optional["ProcessorMixin"],
+    cutoff_len: int,
+    train_on_prompt: bool,
+    mask_history: bool,
+) -> Tuple[List[int], List[int]]:
+    # <video> <text> <video> 交错的版本
+    # stream labels 应该在<|im_end|>上计算。
+    # 所以视频中每帧后都需要加上<|vision_end|><|im_end|>
+    # 需要mask掉额外新加的token
+
+    import pdb; pdb.set_trace()
+    print('Debug V3: 产生input_ids, labels, stream_labels')
+
+    # 判断视频应该怎么分段
+    video_time_segs = []
+    for message in prompt + response:
+        content = message["content"]
+        if VIDEO_PLACEHOLDER in content:
+            time = message['time']
+            for i in range(0, len(time), 2):
+                video_time_segs.append([time[i], time[i+1]])
+
+    # import pdb; pdb.set_trace()
+    messages, frame_idxs, frame_times, video_grid_thw = template.mm_plugin.process_messages(prompt + response, images, videos, processor)
+    input_ids, labels = template.mm_plugin.process_token_ids([], [], images, videos, tokenizer, processor)
+    masks = [1] * len(input_ids)
+
+    # TODO: format 应该放在别的地方，先暂时放在这里了
+    # TODO: 暂时采用粗暴的后截断，和LLAMA_FACTORY默认的截断方式不一致
+    # import pdb; pdb.set_trace()
+    # print('Debug: 产生input_ids, labels, stream_labels')
+    assert not template.efficient_eos
+
+    system = system or template.default_system
+
+    # 用于stream_head回复时机的训练，
+    frame_pad_id = tokenizer.encode(FRAME_PAD_TOKEN)[0]    # 每一帧的最后一个 video token
+    judge_id = tokenizer.encode('<|im_end|>')[0]
+
+    stream_labels = [IGNORE_INDEX] * len(labels)
+    for i, message in enumerate(messages):
+        elements = []
+        if i == 0:
+            elements += template.format_prefix.apply()
+            if system or tools:
+                tool_text = template.format_tools.apply(content=tools)[0] if tools else ""
+                elements += template.format_system.apply(content=(system + tool_text))
+
+        elements_stream = deepcopy(elements)
+        if message["role"] in [Role.USER.value, Role.OBSERVATION.value]:
+            if message["role"] == Role.USER.value:
+                elements += template.format_user.apply(content=message["content"], idx=str(i // 2))
+                elements_stream += template.format_user.apply(content=message["content_stream"], idx=str(i // 2))
+            elif message["role"] == Role.OBSERVATION.value:
+                elements += template.format_observation.apply(content=message["content"])
+                elements_stream += template.format_observation.apply(content=message["content_stream"])
+            encode_elements = template._convert_elements_to_ids(tokenizer, elements)
+            input_ids += encode_elements
+            labels += [IGNORE_INDEX] * len(encode_elements)
+
+            # 用于训练回复时机
+            need_response = False
+            if i + 1 < len(messages):
+                next_message = messages[i + 1]
+                need_response = (next_message["role"] == Role.ASSISTANT.value)
+            encode_elements_stream = template._convert_elements_to_ids(tokenizer, elements_stream)
+
+            # encode_elements_stream 用来生成mask
+            # 判定点直接用 encode_elements 找
+            judge_spots = []
+            for idx, token_idx in enumerate(encode_elements):
+                if token_idx == judge_id:
+                    judge_spots.append(idx)
+
+            # 最后1个判别点根据情况判断，之前的其他判别点不能回复
+            tmp_stream_labels = [IGNORE_INDEX] * len(encode_elements_stream)
+            for idx in judge_spots[:-1]:
+                tmp_stream_labels[idx] = 0
+            tmp_stream_labels[judge_spots[-1]] = int(need_response)
+            stream_labels += tmp_stream_labels
+
+            mask = [t != FRAME_PAD_TOKEN for t in encode_elements_stream]
+            masks += mask
+
+        elif message["role"] == Role.ASSISTANT.value:
+            # 现在的写法非常死板，如果elements中本身有内容，表示是特殊情况,需要额外处理
+            assert len(elements) == 0
+            elements += template.format_assistant.apply(content=message["content"])
+            prefix = elements[:1]
+            content = elements[1:]
+            encoded_prefix = template._convert_elements_to_ids(tokenizer, prefix)
+            encoded_content = template._convert_elements_to_ids(tokenizer, content)
+            input_ids += encoded_prefix + encoded_content
+            if mask_history and i < len(messages) - 1:
+                labels += [IGNORE_INDEX] * len(encoded_prefix + encoded_content)
+            else:
+                labels += [IGNORE_INDEX] * len(encoded_prefix) + encoded_content
+
+            # assistant 部分没有视频，不用训练stream_head
+            stream_labels += [IGNORE_INDEX] * len(encoded_prefix + encoded_content)
+            masks += [1] * len(encoded_prefix + encoded_content)
+
+        elif message["role"] == Role.FUNCTION.value:
+            raise NotImplementedError("Not implemented role:{}".format(message["role"]))
+        else:
+            raise NotImplementedError("Unexpected role: {}".format(message["role"]))
+
+    assert len(input_ids) == len(labels) and len(input_ids) == len(stream_labels)
+    if cutoff_len > len(input_ids):
+        input_ids = input_ids[:cutoff_len]
+        labels = labels[:cutoff_len]
+        stream_labels = stream_labels[:cutoff_len]
+        masks = masks[:cutoff_len]
+
+    return input_ids, labels, stream_labels, frame_idxs, frame_times, video_grid_thw, masks
+
+
+
+
 def preprocess_supervised_dataset(
     examples: Dict[str, List[Any]],
     template: "Template",
@@ -404,6 +533,54 @@ def preprocess_supervised_dataset(
                 #     train_on_prompt=data_args.train_on_prompt,
                 #     mask_history=data_args.mask_history,
                 # )
+
+
+        elif data_args.template == 'qwen2_vl_stream_v3':
+            # qwen2_vl_stream 对话数据不进行验证, 并且需要额外的stream_labels
+            # 数据集中少量视频文件有问题，放弃这些数据
+            try:
+                input_ids, labels, stream_labels, frame_idxs, frame_times, video_grid_thw, masks = _encode_supervised_stream_example_v3(
+                    prompt=examples["_prompt"][i],
+                    response=examples["_response"][i],
+                    system=examples["_system"][i],
+                    tools=examples["_tools"][i],
+                    images=examples["_images"][i] or [],
+                    videos=examples["_videos"][i] or [],
+                    template=template,
+                    tokenizer=tokenizer,
+                    processor=processor,
+                    cutoff_len=data_args.cutoff_len,
+                    train_on_prompt=data_args.train_on_prompt,
+                    mask_history=data_args.mask_history,
+                )
+                model_inputs["input_ids"].append(input_ids)
+                # model_inputs["attention_mask"].append([1] * len(input_ids))
+                model_inputs["labels"].append(labels)
+                model_inputs["images"].append(examples["_images"][i])
+                model_inputs["videos"].append(examples["_videos"][i])
+                model_inputs["stream_labels"].append(stream_labels)
+                model_inputs["frame_idxs"].append(frame_idxs)
+                model_inputs["frame_times"].append(frame_times)
+                model_inputs["video_grid_thw"].append(video_grid_thw)
+                model_inputs["attention_mask"].append(masks)
+            except:
+                print(f'Skip broken data!!!:{examples["_videos"][i]}.')
+                # import pdb; pdb.set_trace()
+                # input_ids, labels, stream_labels, video_time_segs = _encode_supervised_stream_example_v2(
+                #     prompt=examples["_prompt"][i],
+                #     response=examples["_response"][i],
+                #     system=examples["_system"][i],
+                #     tools=examples["_tools"][i],
+                #     images=examples["_images"][i] or [],
+                #     videos=examples["_videos"][i] or [],
+                #     template=template,
+                #     tokenizer=tokenizer,
+                #     processor=processor,
+                #     cutoff_len=data_args.cutoff_len,
+                #     train_on_prompt=data_args.train_on_prompt,
+                #     mask_history=data_args.mask_history,
+                # )
+
 
         else:
             if len(examples["_prompt"][i]) % 2 != 1 or len(examples["_response"][i]) != 1:

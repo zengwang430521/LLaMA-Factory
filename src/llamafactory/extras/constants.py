@@ -100,6 +100,8 @@ DO_RESPONSE_TOKEN = '<|quad_start|>'   # 应该进行回复
 # TODO: 暂时借用一下现有的special token, 要规范的话，得用新的special token
 FRAME_END_TOKEN = '<|quad_end|>'          # 表示每帧的最后一个vision token
 
+# TODO: 暂时借用一下现有的special token, 要规范的话，得用新的special token
+FRAME_PAD_TOKEN = '<|quad_end|>'          # 表示每帧的最后一个vision token
 
 
 class DownloadSource(str, Enum):
