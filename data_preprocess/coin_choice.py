@@ -40,7 +40,7 @@ for video_id in tqdm(src_data['database'].keys()):
     item = src_data['database'][video_id]
     video_path = f"COIN/videos/{item['recipe_type']}/{video_id}.mp4"
     if not os.path.exists(f"/home/SENSETIME/zengwang/myprojects/task_define_service/data/COIN/annotations/videos/{item['recipe_type']}/{video_id}.mp4"):
-        print(f'skip: {video_id}')
+        # print(f'skip: {video_id}')
         continue
 
     tutorial = item["class"]

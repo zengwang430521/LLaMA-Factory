@@ -69,7 +69,11 @@ for version in ['14_valid', '15_valid']:
             if video_id in test_videos:
                 print(f'skip: {video_id}')
 
-            video_path = join(f'thumods/{video_id}.mp4')
+            if version == '15_valid':
+                video_path = join(f'thumods/videos/{video_id}.mp4')
+            elif version == '14_valid':
+                video_path = join(f'thumods/validation/{video_id}.mp4')
+
             actions = action_dict[video_id]
 
             # 只使用多次出现的动作
@@ -110,7 +114,7 @@ with open(tar_file, 'w', encoding='utf-8') as f:
 print(len(tar_data))
 
 
-with open('/home/SENSETIME/zengwang/myprojects/task_define_service/data/thumos/processed/filtered_videos_ids.json', 'w', encoding='utf-8') as f:
-    json.dump(list(filtered_videos_ids), f, ensure_ascii=False, indent=2)
-print(len(filtered_videos_ids))
+# with open('/home/SENSETIME/zengwang/myprojects/task_define_service/data/thumos/processed/filtered_videos_ids.json', 'w', encoding='utf-8') as f:
+#     json.dump(list(filtered_videos_ids), f, ensure_ascii=False, indent=2)
+# print(len(filtered_videos_ids))
 
