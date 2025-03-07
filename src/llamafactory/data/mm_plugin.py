@@ -1041,13 +1041,19 @@ class Qwen2vlStreamPluginV2(BasePlugin):
 
         results = []
         for video, sample_indices_seg in zip(videos, video_sample_idxs):
-            container = av.open(video, "r")
-            video_stream = next(stream for stream in container.streams if stream.type == "video")
-            frames: List["ImageObject"] = []
-            container.seek(0)
-            for frame_idx, frame in enumerate(container.decode(video_stream)):
-                if frame_idx in sample_indices_seg:
-                    frames.append(frame.to_image())
+            # container = av.open(video, "r")
+            # video_stream = next(stream for stream in container.streams if stream.type == "video")
+            # frames: List["ImageObject"] = []
+            # container.seek(0)
+            # for frame_idx, frame in enumerate(container.decode(video_stream)):
+            #     if frame_idx in sample_indices_seg:
+            #         frames.append(frame.to_image())
+
+            # 新的代码
+            vr = decord.VideoReader(video)
+            frames = vr.get_batch(sample_indices_seg).asnumpy()
+            frames = [Image.fromarray(frame) for frame in frames]
+
             frames = self._regularize_images(frames, **kwargs)
             results.append(frames)
         return results
@@ -1438,25 +1444,27 @@ class Qwen2vlStreamPluginV3(BasePlugin):
 
         results = []
         for video, sample_indices_seg in zip(videos, video_sample_idxs):
-            # 旧版本代码，可能很慢
-            import pdb; pdb.set_trace()
+            # import pdb; pdb.set_trace()
+            # t0 = time.time()
+            #
+            # # 旧版本代码，可能很慢
+            # container = av.open(video, "r")
+            # video_stream = next(stream for stream in container.streams if stream.type == "video")
+            # frames: List["ImageObject"] = []
+            # container.seek(0)
+            # for frame_idx, frame in enumerate(container.decode(video_stream)):
+            #     if frame_idx in sample_indices_seg:
+            #         frames.append(frame.to_image())
+            #
+            # t1 = time.time()
 
-            t0 = time.time()
-            container = av.open(video, "r")
-            video_stream = next(stream for stream in container.streams if stream.type == "video")
-            frames: List["ImageObject"] = []
-            container.seek(0)
-            for frame_idx, frame in enumerate(container.decode(video_stream)):
-                if frame_idx in sample_indices_seg:
-                    frames.append(frame.to_image())
-
-            t1 = time.time()
             # 新的代码
             vr = decord.VideoReader(video)
             frames = vr.get_batch(sample_indices_seg).asnumpy()
             frames = [Image.fromarray(frame) for frame in frames]
-            t2 = time.time()
-            print(f'{t1-t0} vs {t2-t1}')
+
+            # t2 = time.time()
+            # print(f'{t1-t0} vs {t2-t1}')
 
             frames = self._regularize_images(frames, **kwargs)
             results.append(frames)
