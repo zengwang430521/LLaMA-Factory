@@ -1453,7 +1453,7 @@ class Qwen2vlStreamPluginV3(BasePlugin):
             t1 = time.time()
             # 新的代码
             vr = decord.VideoReader(video)
-            frames = vr.get_batch(frame_idxs).asnumpy()
+            frames = vr.get_batch(sample_indices_seg).asnumpy()
             frames = [Image.fromarray(frame) for frame in frames]
             t2 = time.time()
             print(f'{t1-t0} vs {t2-t1}')
