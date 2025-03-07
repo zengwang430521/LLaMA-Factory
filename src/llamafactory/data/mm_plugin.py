@@ -1439,6 +1439,8 @@ class Qwen2vlStreamPluginV3(BasePlugin):
         results = []
         for video, sample_indices_seg in zip(videos, video_sample_idxs):
             # 旧版本代码，可能很慢
+            import pdb; pdb.set_trace()
+
             t0 = time.time()
             container = av.open(video, "r")
             video_stream = next(stream for stream in container.streams if stream.type == "video")
@@ -1450,7 +1452,7 @@ class Qwen2vlStreamPluginV3(BasePlugin):
 
             t1 = time.time()
             # 新的代码
-            vr = decord.VideoReader(video_file_name)
+            vr = decord.VideoReader(video)
             frames = vr.get_batch(frame_idxs).asnumpy()
             frames = [Image.fromarray(frame) for frame in frames]
             t2 = time.time()
