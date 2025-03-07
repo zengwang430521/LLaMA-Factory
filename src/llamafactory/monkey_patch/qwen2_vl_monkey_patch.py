@@ -127,8 +127,8 @@ class Qwen2VLStream(Qwen2VLForConditionalGeneration):
         "The image shows a street scene with a red stop sign in the foreground. In the background, there is a large red gate with Chinese characters ..."
         ```"""
 
-        # import pdb; pdb.set_trace()
-        # print('Debug: 模型forward')
+        import pdb; pdb.set_trace()
+        print('Debug: 模型forward')
         # if not hasattr(self, "tokenizer"):
         #     from transformers.models.auto import AutoTokenizer
         #     self.tokenizer = AutoTokenizer.from_pretrained("/afs/zengwang/ckpt/Stream-Qwen2-VL-7B-Instruct")
