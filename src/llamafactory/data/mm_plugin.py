@@ -11,6 +11,9 @@ from typing_extensions import override
 
 from ..extras.constants import IGNORE_INDEX, IMAGE_PLACEHOLDER, VIDEO_PLACEHOLDER, DO_RESPONSE_TOKEN, NO_RESPONSE_TOKEN, FRAME_END_TOKEN, FRAME_PAD_TOKEN
 from ..extras.packages import is_pillow_available, is_pyav_available, is_transformers_version_greater_than
+import decord
+import time
+
 
 
 if is_pillow_available():
@@ -1435,6 +1438,8 @@ class Qwen2vlStreamPluginV3(BasePlugin):
 
         results = []
         for video, sample_indices_seg in zip(videos, video_sample_idxs):
+            # 旧版本代码，可能很慢
+            t0 = time.time()
             container = av.open(video, "r")
             video_stream = next(stream for stream in container.streams if stream.type == "video")
             frames: List["ImageObject"] = []
@@ -1442,6 +1447,15 @@ class Qwen2vlStreamPluginV3(BasePlugin):
             for frame_idx, frame in enumerate(container.decode(video_stream)):
                 if frame_idx in sample_indices_seg:
                     frames.append(frame.to_image())
+
+            t1 = time.time()
+            # 新的代码
+            vr = decord.VideoReader(video_file_name)
+            frames = vr.get_batch(frame_idxs).asnumpy()
+            frames = [Image.fromarray(frame) for frame in frames]
+            t2 = time.time()
+            print(f'{t1-t0} vs {t2-t1}')
+
             frames = self._regularize_images(frames, **kwargs)
             results.append(frames)
         return results
