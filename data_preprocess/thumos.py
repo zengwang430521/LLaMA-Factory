@@ -70,9 +70,9 @@ for version in ['14_valid', '15_valid']:
                 print(f'skip: {video_id}')
 
             if version == '15_valid':
-                video_path = join(f'thumods/videos/{video_id}.mp4')
+                video_path = join(f'thumos/videos/{video_id}.mp4')
             elif version == '14_valid':
-                video_path = join(f'thumods/validation/{video_id}.mp4')
+                video_path = join(f'thumos/validation/{video_id}.mp4')
 
             actions = action_dict[video_id]
 
