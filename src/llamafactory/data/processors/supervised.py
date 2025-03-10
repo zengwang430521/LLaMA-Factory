@@ -241,10 +241,10 @@ def _encode_supervised_stream_example_v2(
 
     # TODO: format 应该放在别的地方，先暂时放在这里了
     # TODO: 暂时采用粗暴的后截断，和LLAMA_FACTORY默认的截断方式不一致
-    import pdb; pdb.set_trace()
-    print('Debug: 产生input_ids, labels, stream_labels')
-    assert not template.efficient_eos
+    # import pdb; pdb.set_trace()
+    # print('Debug: 产生input_ids, labels, stream_labels')
 
+    assert not template.efficient_eos
     system = system or template.default_system
 
     # 用于stream_head回复时机的训练，
