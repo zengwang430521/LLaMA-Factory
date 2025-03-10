@@ -517,7 +517,7 @@ def _encode_supervised_stream_example_v3(
     #     stream_labels = stream_labels[:cutoff_len]
     #     masks = masks[:cutoff_len]
 
-    return input_ids, labels, stream_labels, frame_idxs, frame_times, video_grid_thw, masks
+    return input_ids, labels, stream_labels, frame_idxs, frame_times, video_grid_thw, masks,reserved_message_num
 
 
 
@@ -623,7 +623,7 @@ def preprocess_supervised_dataset(
             # qwen2_vl_stream 对话数据不进行验证, 并且需要额外的stream_labels
             # 数据集中少量视频文件有问题，放弃这些数据
             try:
-                input_ids, labels, stream_labels, frame_idxs, frame_times, video_grid_thw, masks = _encode_supervised_stream_example_v3(
+                input_ids, labels, stream_labels, frame_idxs, frame_times, video_grid_thw, masks, reserved_message_num = _encode_supervised_stream_example_v3(
                     prompt=examples["_prompt"][i],
                     response=examples["_response"][i],
                     system=examples["_system"][i],
