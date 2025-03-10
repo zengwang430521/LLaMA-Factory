@@ -606,8 +606,8 @@ def preprocess_supervised_dataset(
             if reserved_message_num < len(messages):
                 import pdb; pdb.set_trace()
 
+            import pdb; pdb.set_trace()
             num_image, num_video, num_video_grid = get_image_video_grid_num(messages[:reserved_message_num])
-
             model_inputs["frame_idxs"].append(frame_idxs[:num_video])
             model_inputs["frame_times"].append(frame_times[:num_video])
             model_inputs["video_grid_thw"].append(video_grid_thw[:num_video_grid])
