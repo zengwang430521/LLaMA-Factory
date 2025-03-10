@@ -565,21 +565,7 @@ def preprocess_supervised_dataset(
                 model_inputs["attention_mask"].append(masks)
             except:
                 print(f'Skip broken data!!!:{examples["_videos"][i]}.')
-                # import pdb; pdb.set_trace()
-                # input_ids, labels, stream_labels, video_time_segs = _encode_supervised_stream_example_v2(
-                #     prompt=examples["_prompt"][i],
-                #     response=examples["_response"][i],
-                #     system=examples["_system"][i],
-                #     tools=examples["_tools"][i],
-                #     images=examples["_images"][i] or [],
-                #     videos=examples["_videos"][i] or [],
-                #     template=template,
-                #     tokenizer=tokenizer,
-                #     processor=processor,
-                #     cutoff_len=data_args.cutoff_len,
-                #     train_on_prompt=data_args.train_on_prompt,
-                #     mask_history=data_args.mask_history,
-                # )
+
 
 
         else:
