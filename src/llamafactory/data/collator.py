@@ -201,22 +201,16 @@ class MultiModalDataCollatorForSeq2Seq(DataCollatorForSeq2Seq):
             else:
                 video_grid_thw = mm_inputs.get("video_grid_thw", None)
 
-            try:
-                features["position_ids"], features["rope_deltas"] = self.model.get_rope_index(
-                    input_ids=features["input_ids"],
-                    image_grid_thw=mm_inputs.get("image_grid_thw", None),
-                    video_grid_thw=video_grid_thw,
-                    attention_mask=features["attention_mask"],
-                )
-            except:
-                import pdb; pdb.set_trace()
-                print('DEBUG: get_rope_index')
-                features["position_ids"], features["rope_deltas"] = self.model.get_rope_index(
-                    input_ids=features["input_ids"],
-                    image_grid_thw=mm_inputs.get("image_grid_thw", None),
-                    video_grid_thw=video_grid_thw,
-                    attention_mask=features["attention_mask"],
-                )
+            features["position_ids"], features["rope_deltas"] = self.model.get_rope_index(
+                input_ids=features["input_ids"],
+                image_grid_thw=mm_inputs.get("image_grid_thw", None),
+                video_grid_thw=video_grid_thw,
+                attention_mask=features["attention_mask"],
+            )
+
+            # 截断放在这里了
+            import pdb; pdb.set_trace()
+            print("debug: cut off")
 
         if "cross_attention_mask" in mm_inputs:  # for mllama inputs when pad_to_multiple_of is enabled
             cross_attention_mask = mm_inputs.pop("cross_attention_mask")

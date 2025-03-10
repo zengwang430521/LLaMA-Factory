@@ -266,7 +266,7 @@ class Qwen2VLStream(Qwen2VLForConditionalGeneration):
         )
 
 
-    # '''没有修改过'''
+    '''没有修改过'''
     # def get_rope_index(
     #     self,
     #     input_ids: torch.LongTensor,
@@ -318,7 +318,7 @@ class Qwen2VLStream(Qwen2VLForConditionalGeneration):
     #         position_ids (`torch.LongTensor` of shape `(3, batch_size, sequence_length)`)
     #         mrope_position_deltas (`torch.Tensor` of shape `(batch_size)`)
     #     """
-    #     import pdb; pdb.set_trace()
+    #     # import pdb; pdb.set_trace()
     #     spatial_merge_size = self.config.vision_config.spatial_merge_size
     #     image_token_id = self.config.image_token_id
     #     video_token_id = self.config.video_token_id
@@ -415,7 +415,7 @@ class Qwen2VLStream(Qwen2VLForConditionalGeneration):
     #             )
     #
     #         return position_ids, mrope_position_deltas
-
+    #
 
 AutoConfig.register('qwen2_vl_stream', Qwen2VLStreamConfig)
 # AutoConfig.register('qwen2_vl_stream_v2', Qwen2VLStreamConfig)
