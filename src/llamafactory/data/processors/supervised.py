@@ -575,8 +575,15 @@ def preprocess_supervised_dataset(
                 model_inputs["frame_times"].append(frame_times[:num_video_grid])
                 model_inputs["video_grid_thw"].append(video_grid_thw[:num_video_grid])
 
-                model_inputs["images"].append(examples["_images"][i][:num_image])
-                model_inputs["videos"].append(examples["_videos"][i][:num_video])
+                images = examples["_images"][i]
+                if images is not None:
+                    images = images[:num_image]
+                model_inputs["images"].append(images)
+
+                videos = examples["_videos"][i]
+                if videos is not None:
+                    videos = videos[:num_video]
+                model_inputs["videos"].append(videos)
 
             except:
                 print(f'Skip broken data!!!:{examples["_videos"][i]}.')
