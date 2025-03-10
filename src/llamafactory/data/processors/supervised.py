@@ -561,6 +561,7 @@ def preprocess_supervised_dataset(
                     mask_history=data_args.mask_history,
                 )
 
+                import pdb; pdb.set_trace()
                 messages = examples["_prompt"][i] + examples["_response"][i]
                 num_image, num_video, num_video_grid = get_image_video_grid_num(messages[:reserved_message_num])
 
