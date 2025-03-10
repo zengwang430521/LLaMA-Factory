@@ -191,7 +191,7 @@ def _encode_supervised_stream_example(
             raise NotImplementedError("Unexpected role: {}".format(message["role"]))
 
     assert len(input_ids) == len(labels) and len(input_ids) == len(stream_labels)
-    if cutoff_len > len(input_ids):
+    if len(input_ids) > cutoff_len:
         input_ids = input_ids[:cutoff_len]
         labels = labels[:cutoff_len]
         stream_labels = stream_labels[:cutoff_len]
@@ -314,7 +314,7 @@ def _encode_supervised_stream_example_v2(
             raise NotImplementedError("Unexpected role: {}".format(message["role"]))
 
     assert len(input_ids) == len(labels) and len(input_ids) == len(stream_labels)
-    if cutoff_len > len(input_ids):
+    if len(input_ids) > cutoff_len:
         input_ids = input_ids[:cutoff_len]
         labels = labels[:cutoff_len]
         stream_labels = stream_labels[:cutoff_len]
@@ -441,7 +441,7 @@ def _encode_supervised_stream_example_v3(
             raise NotImplementedError("Unexpected role: {}".format(message["role"]))
 
     assert len(input_ids) == len(labels) and len(input_ids) == len(stream_labels)
-    if cutoff_len > len(input_ids):
+    if len(input_ids) > cutoff_len:
         input_ids = input_ids[:cutoff_len]
         labels = labels[:cutoff_len]
         stream_labels = stream_labels[:cutoff_len]
