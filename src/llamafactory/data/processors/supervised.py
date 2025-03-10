@@ -491,7 +491,7 @@ def _encode_supervised_stream_example_v3(
 
 
 def get_image_video_grid_num(messages):
-    num_image, num_video, num_video_grid = 0, 0
+    num_image, num_video, num_video_grid = 0, 0, 0
     messages = deepcopy(messages)
     for message in messages:
         content = message["content"]
