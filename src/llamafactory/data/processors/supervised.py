@@ -602,6 +602,10 @@ def preprocess_supervised_dataset(
             model_inputs["stream_labels"].append(stream_labels)
 
             messages = examples["_prompt"][i] + examples["_response"][i]
+
+            if reserved_message_num < len(messages):
+                import pdb; pdb.set_trace()
+
             num_image, num_video, num_video_grid = get_image_video_grid_num(messages[:reserved_message_num])
 
             model_inputs["frame_idxs"].append(frame_idxs[:num_video_grid])
@@ -647,10 +651,6 @@ def preprocess_supervised_dataset(
             model_inputs["stream_labels"].append(stream_labels)
 
             messages = examples["_prompt"][i] + examples["_response"][i]
-            if reserved_message_num < len(messages):
-                import pdb; pdb.set_trace()
-
-
             num_image, num_video, num_video_grid = get_image_video_grid_num(messages[:reserved_message_num])
 
             model_inputs["frame_idxs"].append(frame_idxs[:num_video_grid])
