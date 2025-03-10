@@ -208,10 +208,6 @@ class MultiModalDataCollatorForSeq2Seq(DataCollatorForSeq2Seq):
                 attention_mask=features["attention_mask"],
             )
 
-            # 截断放在这里了
-            import pdb; pdb.set_trace()
-            print("debug: cut off")
-
         if "cross_attention_mask" in mm_inputs:  # for mllama inputs when pad_to_multiple_of is enabled
             cross_attention_mask = mm_inputs.pop("cross_attention_mask")
             seq_len = features["input_ids"].size(1)
@@ -221,8 +217,6 @@ class MultiModalDataCollatorForSeq2Seq(DataCollatorForSeq2Seq):
         features.update(mm_inputs)
         if isinstance(features.get("pixel_values"), list):  # for pixtral inputs
             features = features.data  # use default_collate() instead of BatchEncoding.to()
-
-        return features
 
 
 @dataclass
