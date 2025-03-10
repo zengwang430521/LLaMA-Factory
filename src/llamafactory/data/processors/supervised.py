@@ -219,8 +219,8 @@ def _encode_supervised_stream_example_v2(
     # <video> <text> <video> 交错的版本
     # stream labels 应该在每帧最后的 video token 和问题最后的文本token上计算
 
-    # import pdb; pdb.set_trace()
-    # print('Debug V2: 产生input_ids, labels, stream_labels')
+    import pdb; pdb.set_trace()
+    print('Debug V2: 产生input_ids, labels, stream_labels')
 
     # 判断视频应该怎么分段
     video_time_segs = []
@@ -232,7 +232,7 @@ def _encode_supervised_stream_example_v2(
                 video_time_segs.append([time[i], time[i+1]])
 
     # import pdb; pdb.set_trace()
-    messages, frame_idxs, frame_times, video_grid_thw = template.mm_plugin.process_messages(prompt + response, images, videos, processor, cutoff_len)
+    messages, frame_idxs, frame_times, video_grid_thw = template.mm_plugin.process_messages(prompt + response, images, videos, processor)
     input_ids, labels = template.mm_plugin.process_token_ids([], [], images, videos, tokenizer, processor)
 
     # TODO: format 应该放在别的地方，先暂时放在这里了
@@ -251,8 +251,15 @@ def _encode_supervised_stream_example_v2(
 
     stream_labels = [IGNORE_INDEX] * len(labels)
 
-    valid_frame_idxs, valid_frame_times, valid_video_grid_thw = [], [], []
+    reserved_message_num = 0
+
     for i, message in enumerate(messages):
+        total_len = len(input_ids)
+
+        '''超出长度就不要了'''
+        if total_len >= cutoff_len:
+            break
+
         elements = []
         if i == 0:
             elements += template.format_prefix.apply()
@@ -269,8 +276,6 @@ def _encode_supervised_stream_example_v2(
                 elements += template.format_observation.apply(content=message["content"])
                 elements_stream += template.format_observation.apply(content=message["content_stream"])
             encode_elements = template._convert_elements_to_ids(tokenizer, elements)
-            input_ids += encode_elements
-            labels += [IGNORE_INDEX] * len(encode_elements)
 
             # 用于训练回复时机
             need_response = False
@@ -293,8 +298,19 @@ def _encode_supervised_stream_example_v2(
             for idx in judge_spots[:-1]:
                 tmp_stream_labels[idx] = 0
             tmp_stream_labels[judge_spots[-1]] = int(need_response)
+
+            cur_len = len(encode_elements)
+            if total_len + cur_len > cutoff_len:
+                '''
+                如果加上之后会超出长度，因为可能有视频存在，
+                把<|video_pad|>截断的话， get_rope_index会出问题, 
+                所以不能直接做截断, 干脆放弃这轮对话'''
+                break
+
+            input_ids += encode_elements
+            labels += [IGNORE_INDEX] * len(encode_elements)
             stream_labels += tmp_stream_labels
-            t = 0
+            reserved_message_num += 1
 
         elif message["role"] == Role.ASSISTANT.value:
             # 现在的写法非常死板，如果elements中本身有内容，表示是特殊情况,需要额外处理
@@ -304,14 +320,23 @@ def _encode_supervised_stream_example_v2(
             content = elements[1:]
             encoded_prefix = template._convert_elements_to_ids(tokenizer, prefix)
             encoded_content = template._convert_elements_to_ids(tokenizer, content)
-            input_ids += encoded_prefix + encoded_content
-            if mask_history and i < len(messages) - 1:
-                labels += [IGNORE_INDEX] * len(encoded_prefix + encoded_content)
-            else:
-                labels += [IGNORE_INDEX] * len(encoded_prefix) + encoded_content
 
+            encode_elements = encoded_prefix + encoded_content
+            if mask_history and i < len(messages) - 1:
+                encode_labels = [IGNORE_INDEX] * len(encoded_prefix + encoded_content)
+            else:
+                encode_labels = [IGNORE_INDEX] * len(encoded_prefix) + encoded_content
+
+            cur_len = len(encode_elements)
+            if total_len + cur_len >= cutoff_len:
+                encode_elements = encode_elements[:cutoff_len-total_len]
+                encode_labels = encode_labels[:cutoff_len-total_len]
+
+            input_ids += encode_elements
+            labels += encode_labels
             # assistant 部分没有视频，不用训练stream_head
-            stream_labels += [IGNORE_INDEX] * len(encoded_prefix + encoded_content)
+            stream_labels += [IGNORE_INDEX] * len(encode_elements)
+            reserved_message_num += 1
 
         elif message["role"] == Role.FUNCTION.value:
             raise NotImplementedError("Not implemented role:{}".format(message["role"]))
@@ -320,14 +345,13 @@ def _encode_supervised_stream_example_v2(
 
     assert len(input_ids) == len(labels) and len(input_ids) == len(stream_labels)
     
-    '''把<|video_pad|>截断的话， get_rope_index会出问题'''
     # if len(input_ids) > cutoff_len:
     #     # import pdb; pdb.set_trace()
     #     input_ids = input_ids[:cutoff_len]
     #     labels = labels[:cutoff_len]
     #     stream_labels = stream_labels[:cutoff_len]
 
-    return input_ids, labels, stream_labels, frame_idxs, frame_times, video_grid_thw
+    return input_ids, labels, stream_labels, frame_idxs, frame_times, video_grid_thw, reserved_message_num
 
 
 
@@ -461,6 +485,21 @@ def _encode_supervised_stream_example_v3(
     return input_ids, labels, stream_labels, frame_idxs, frame_times, video_grid_thw, masks
 
 
+from ..extras.constants import IGNORE_INDEX, IMAGE_PLACEHOLDER, VIDEO_PLACEHOLDER, DO_RESPONSE_TOKEN, NO_RESPONSE_TOKEN, FRAME_END_TOKEN, FRAME_PAD_TOKEN
+
+def get_image_video_grid_num(messages):
+    num_image, num_video, num_video_grid = 0, 0
+    messages = deepcopy(messages)
+    for message in messages:
+        content = message["content"]
+        num_image += content.count(IMAGE_PLACEHOLDER)
+        num_video += content.count(VIDEO_PLACEHOLDER)
+
+        while "<video><+><video>" in content:
+            content = content.replace("<video><+><video>", "<video>", 1)
+        num_video_grid += content.count(VIDEO_PLACEHOLDER)
+
+    return num_image, num_video, num_video_grid
 
 
 def preprocess_supervised_dataset(
@@ -504,7 +543,7 @@ def preprocess_supervised_dataset(
             # qwen2_vl_stream 对话数据不进行验证, 并且需要额外的stream_labels
             # 数据集中少量视频文件有问题，放弃这些数据
             try:
-                input_ids, labels, stream_labels, frame_idxs, frame_times, video_grid_thw = _encode_supervised_stream_example_v2(
+                input_ids, labels, stream_labels, frame_idxs, frame_times, video_grid_thw, reserved_message_num = _encode_supervised_stream_example_v2(
                     prompt=examples["_prompt"][i],
                     response=examples["_response"][i],
                     system=examples["_system"][i],
@@ -518,15 +557,23 @@ def preprocess_supervised_dataset(
                     train_on_prompt=data_args.train_on_prompt,
                     mask_history=data_args.mask_history,
                 )
+
+                messages = examples["_prompt"][i] + examples["_response"][i]
+                num_image, num_video, num_video_grid = get_image_video_grid_num(messages[:reserved_message_num])
+
+
                 model_inputs["input_ids"].append(input_ids)
                 model_inputs["attention_mask"].append([1] * len(input_ids))
                 model_inputs["labels"].append(labels)
-                model_inputs["images"].append(examples["_images"][i])
-                model_inputs["videos"].append(examples["_videos"][i])
                 model_inputs["stream_labels"].append(stream_labels)
-                model_inputs["frame_idxs"].append(frame_idxs)
-                model_inputs["frame_times"].append(frame_times)
-                model_inputs["video_grid_thw"].append(video_grid_thw)
+
+                model_inputs["frame_idxs"].append(frame_idxs[:num_video_grid])
+                model_inputs["frame_times"].append(frame_times[:num_video_grid])
+                model_inputs["video_grid_thw"].append(video_grid_thw[:num_video_grid])
+
+                model_inputs["images"].append(examples["_images"][i][:num_image])
+                model_inputs["videos"].append(examples["_videos"][i][:num_video])
+
             except:
                 print(f'Skip broken data!!!:{examples["_videos"][i]}.')
                 # import pdb; pdb.set_trace()
