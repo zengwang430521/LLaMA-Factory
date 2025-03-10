@@ -315,7 +315,7 @@ def _encode_supervised_stream_example_v2(
 
     assert len(input_ids) == len(labels) and len(input_ids) == len(stream_labels)
     if len(input_ids) > cutoff_len:
-        import pdb; pdb.set_trace()
+        # import pdb; pdb.set_trace()
         input_ids = input_ids[:cutoff_len]
         labels = labels[:cutoff_len]
         stream_labels = stream_labels[:cutoff_len]
@@ -444,7 +444,7 @@ def _encode_supervised_stream_example_v3(
     assert len(input_ids) == len(labels) and len(input_ids) == len(stream_labels)
 
     if len(input_ids) > cutoff_len:
-        import pdb; pdb.set_trace()
+        # import pdb; pdb.set_trace()
         input_ids = input_ids[:cutoff_len]
         labels = labels[:cutoff_len]
         stream_labels = stream_labels[:cutoff_len]
