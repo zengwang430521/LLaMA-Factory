@@ -16,9 +16,13 @@ from collections import defaultdict
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Sequence, Tuple
 
 from ...extras import logging
-from ...extras.constants import IGNORE_INDEX, DO_RESPONSE_TOKEN, NO_RESPONSE_TOKEN, VIDEO_PLACEHOLDER, FRAME_END_TOKEN, FRAME_PAD_TOKEN
+from ...extras.constants import (
+    IGNORE_INDEX, DO_RESPONSE_TOKEN, NO_RESPONSE_TOKEN,
+    VIDEO_PLACEHOLDER, FRAME_END_TOKEN, FRAME_PAD_TOKEN,
+    VIDEO_PLACEHOLDER, IMAGE_PLACEHOLDER)
 from .processor_utils import greedy_knapsack, infer_seqlen
 from copy import deepcopy
+
 
 
 if TYPE_CHECKING:
@@ -485,7 +489,6 @@ def _encode_supervised_stream_example_v3(
     return input_ids, labels, stream_labels, frame_idxs, frame_times, video_grid_thw, masks
 
 
-from ..extras.constants import IGNORE_INDEX, IMAGE_PLACEHOLDER, VIDEO_PLACEHOLDER, DO_RESPONSE_TOKEN, NO_RESPONSE_TOKEN, FRAME_END_TOKEN, FRAME_PAD_TOKEN
 
 def get_image_video_grid_num(messages):
     num_image, num_video, num_video_grid = 0, 0
