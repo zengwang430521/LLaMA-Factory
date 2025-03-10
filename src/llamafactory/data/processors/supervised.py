@@ -598,7 +598,6 @@ def preprocess_supervised_dataset(
             model_inputs["images"].append(examples["_images"][i])
             model_inputs["videos"].append(examples["_videos"][i])
 
-    import pdb; pdb.set_trace()
     return model_inputs
 
 
