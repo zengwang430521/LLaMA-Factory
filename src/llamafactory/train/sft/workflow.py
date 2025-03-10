@@ -72,6 +72,7 @@ def run_sft(
         compute_dtype=model_args.compute_dtype,
         **tokenizer_module,
     )
+    data_collator.cutoff_len = data_args.cutoff_len
 
     # Override the decoding parameters of Seq2SeqTrainer
     training_args.generation_max_length = training_args.generation_max_length or data_args.cutoff_len
