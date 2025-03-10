@@ -602,24 +602,21 @@ def preprocess_supervised_dataset(
             model_inputs["stream_labels"].append(stream_labels)
 
             messages = examples["_prompt"][i] + examples["_response"][i]
-
-            if reserved_message_num < len(messages):
-                import pdb; pdb.set_trace()
-
-            import pdb; pdb.set_trace()
             num_image, num_video, num_video_grid = get_image_video_grid_num(messages[:reserved_message_num])
-            model_inputs["frame_idxs"].append(frame_idxs[:num_video])
-            model_inputs["frame_times"].append(frame_times[:num_video])
-            model_inputs["video_grid_thw"].append(video_grid_thw[:num_video_grid])
 
             images = examples["_images"][i]
             if images is not None:
                 images = images[:num_image]
             model_inputs["images"].append(images)
+
             videos = examples["_videos"][i]
             if videos is not None:
                 videos = videos[:num_video]
             model_inputs["videos"].append(videos)
+
+            model_inputs["frame_idxs"].append(frame_idxs[:num_video])
+            model_inputs["frame_times"].append(frame_times[:num_video])
+            model_inputs["video_grid_thw"].append(video_grid_thw[:num_video_grid])
 
 
 
@@ -653,10 +650,6 @@ def preprocess_supervised_dataset(
             messages = examples["_prompt"][i] + examples["_response"][i]
             num_image, num_video, num_video_grid = get_image_video_grid_num(messages[:reserved_message_num])
 
-            model_inputs["frame_idxs"].append(frame_idxs[:num_video_grid])
-            model_inputs["frame_times"].append(frame_times[:num_video_grid])
-            model_inputs["video_grid_thw"].append(video_grid_thw[:num_video_grid])
-
             images = examples["_images"][i]
             if images is not None:
                 images = images[:num_image]
@@ -666,6 +659,10 @@ def preprocess_supervised_dataset(
             if videos is not None:
                 videos = videos[:num_video]
             model_inputs["videos"].append(videos)
+
+            model_inputs["frame_idxs"].append(frame_idxs[:num_video])
+            model_inputs["frame_times"].append(frame_times[:num_video])
+            model_inputs["video_grid_thw"].append(video_grid_thw[:num_video_grid])
 
 
         else:
