@@ -223,8 +223,8 @@ def _encode_supervised_stream_example_v2(
     # <video> <text> <video> 交错的版本
     # stream labels 应该在每帧最后的 video token 和问题最后的文本token上计算
 
-    import pdb; pdb.set_trace()
-    print('Debug V2: 产生input_ids, labels, stream_labels')
+    # import pdb; pdb.set_trace()
+    # print('Debug V2: 产生input_ids, labels, stream_labels')
 
     # 判断视频应该怎么分段
     video_time_segs = []
@@ -561,7 +561,7 @@ def preprocess_supervised_dataset(
                     mask_history=data_args.mask_history,
                 )
 
-                import pdb; pdb.set_trace()
+                # import pdb; pdb.set_trace()
                 messages = examples["_prompt"][i] + examples["_response"][i]
                 num_image, num_video, num_video_grid = get_image_video_grid_num(messages[:reserved_message_num])
 
