@@ -232,13 +232,13 @@ def _encode_supervised_stream_example_v2(
                 video_time_segs.append([time[i], time[i+1]])
 
     # import pdb; pdb.set_trace()
-    messages, frame_idxs, frame_times, video_grid_thw = template.mm_plugin.process_messages(prompt + response, images, videos, processor)
+    messages, frame_idxs, frame_times, video_grid_thw = template.mm_plugin.process_messages(prompt + response, images, videos, processor, cutoff_len)
     input_ids, labels = template.mm_plugin.process_token_ids([], [], images, videos, tokenizer, processor)
 
     # TODO: format 应该放在别的地方，先暂时放在这里了
     # TODO: 暂时采用粗暴的后截断，和LLAMA_FACTORY默认的截断方式不一致
-    # import pdb; pdb.set_trace()
-    # print('Debug: 产生input_ids, labels, stream_labels')
+    import pdb; pdb.set_trace()
+    print('Debug: 产生input_ids, labels, stream_labels')
     assert not template.efficient_eos
 
     system = system or template.default_system
@@ -250,6 +250,8 @@ def _encode_supervised_stream_example_v2(
     vision_end_id = tokenizer.encode('<|vision_end|>')[0]
 
     stream_labels = [IGNORE_INDEX] * len(labels)
+
+    valid_frame_idxs, valid_frame_times, valid_video_grid_thw = [], [], []
     for i, message in enumerate(messages):
         elements = []
         if i == 0:
