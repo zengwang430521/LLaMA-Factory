@@ -409,7 +409,12 @@ def _encode_supervised_stream_example_v3(
     judge_id = tokenizer.encode('<|im_end|>')[0]
 
     stream_labels = [IGNORE_INDEX] * len(labels)
+
+    reserved_message_num = 0
+
     for i, message in enumerate(messages):
+        total_len = len(input_ids)
+
         elements = []
         if i == 0:
             elements += template.format_prefix.apply()
@@ -560,48 +565,32 @@ def preprocess_supervised_dataset(
                     train_on_prompt=data_args.train_on_prompt,
                     mask_history=data_args.mask_history,
                 )
-
-                # import pdb; pdb.set_trace()
-                messages = examples["_prompt"][i] + examples["_response"][i]
-                num_image, num_video, num_video_grid = get_image_video_grid_num(messages[:reserved_message_num])
-
-
-                model_inputs["input_ids"].append(input_ids)
-                model_inputs["attention_mask"].append([1] * len(input_ids))
-                model_inputs["labels"].append(labels)
-                model_inputs["stream_labels"].append(stream_labels)
-
-                model_inputs["frame_idxs"].append(frame_idxs[:num_video_grid])
-                model_inputs["frame_times"].append(frame_times[:num_video_grid])
-                model_inputs["video_grid_thw"].append(video_grid_thw[:num_video_grid])
-
-                images = examples["_images"][i]
-                if images is not None:
-                    images = images[:num_image]
-                model_inputs["images"].append(images)
-
-                videos = examples["_videos"][i]
-                if videos is not None:
-                    videos = videos[:num_video]
-                model_inputs["videos"].append(videos)
-
             except:
                 print(f'Skip broken data!!!:{examples["_videos"][i]}.')
-                # import pdb; pdb.set_trace()
-                # input_ids, labels, stream_labels, video_time_segs = _encode_supervised_stream_example_v2(
-                #     prompt=examples["_prompt"][i],
-                #     response=examples["_response"][i],
-                #     system=examples["_system"][i],
-                #     tools=examples["_tools"][i],
-                #     images=examples["_images"][i] or [],
-                #     videos=examples["_videos"][i] or [],
-                #     template=template,
-                #     tokenizer=tokenizer,
-                #     processor=processor,
-                #     cutoff_len=data_args.cutoff_len,
-                #     train_on_prompt=data_args.train_on_prompt,
-                #     mask_history=data_args.mask_history,
-                # )
+                continue
+
+            # import pdb; pdb.set_trace()
+            model_inputs["input_ids"].append(input_ids)
+            model_inputs["attention_mask"].append([1] * len(input_ids))
+            model_inputs["labels"].append(labels)
+            model_inputs["stream_labels"].append(stream_labels)
+
+            messages = examples["_prompt"][i] + examples["_response"][i]
+            num_image, num_video, num_video_grid = get_image_video_grid_num(messages[:reserved_message_num])
+
+            model_inputs["frame_idxs"].append(frame_idxs[:num_video_grid])
+            model_inputs["frame_times"].append(frame_times[:num_video_grid])
+            model_inputs["video_grid_thw"].append(video_grid_thw[:num_video_grid])
+
+            images = examples["_images"][i]
+            if images is not None:
+                images = images[:num_image]
+            model_inputs["images"].append(images)
+            videos = examples["_videos"][i]
+            if videos is not None:
+                videos = videos[:num_video]
+            model_inputs["videos"].append(videos)
+
 
 
         elif data_args.template == 'qwen2_vl_stream_v3':
@@ -622,19 +611,20 @@ def preprocess_supervised_dataset(
                     train_on_prompt=data_args.train_on_prompt,
                     mask_history=data_args.mask_history,
                 )
-                model_inputs["input_ids"].append(input_ids)
-                # model_inputs["attention_mask"].append([1] * len(input_ids))
-                model_inputs["labels"].append(labels)
-                model_inputs["images"].append(examples["_images"][i])
-                model_inputs["videos"].append(examples["_videos"][i])
-                model_inputs["stream_labels"].append(stream_labels)
-                model_inputs["frame_idxs"].append(frame_idxs)
-                model_inputs["frame_times"].append(frame_times)
-                model_inputs["video_grid_thw"].append(video_grid_thw)
-                model_inputs["attention_mask"].append(masks)
             except:
                 print(f'Skip broken data!!!:{examples["_videos"][i]}.')
+                continue
 
+            model_inputs["input_ids"].append(input_ids)
+            # model_inputs["attention_mask"].append([1] * len(input_ids))
+            model_inputs["labels"].append(labels)
+            model_inputs["images"].append(examples["_images"][i])
+            model_inputs["videos"].append(examples["_videos"][i])
+            model_inputs["stream_labels"].append(stream_labels)
+            model_inputs["frame_idxs"].append(frame_idxs)
+            model_inputs["frame_times"].append(frame_times)
+            model_inputs["video_grid_thw"].append(video_grid_thw)
+            model_inputs["attention_mask"].append(masks)
 
 
         else:
