@@ -164,7 +164,6 @@ class Qwen2VLStream(Qwen2VLForConditionalGeneration):
                 n_image_tokens = (input_ids == self.config.image_token_id).sum().item()
                 n_image_features = image_embeds.shape[0]
                 if n_image_tokens != n_image_features:
-                    import pdb;pdb.set_trace()
                     raise ValueError(
                         f"Image features and image tokens do not match: tokens: {n_image_tokens}, features {n_image_features}"
                     )
@@ -183,6 +182,7 @@ class Qwen2VLStream(Qwen2VLForConditionalGeneration):
                 n_video_tokens = (input_ids == self.config.video_token_id).sum().item()
                 n_video_features = video_embeds.shape[0]
                 if n_video_tokens != n_video_features:
+                    import pdb;pdb.set_trace()
                     raise ValueError(
                         f"Video features and video tokens do not match: tokens: {n_video_tokens}, features {n_video_features}"
                     )
