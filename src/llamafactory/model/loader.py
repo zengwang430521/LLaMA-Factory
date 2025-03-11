@@ -213,8 +213,8 @@ def load_model(
                 )
             )
 
-    # import pdb; pdb.set_trace()
-    # print('Debug: 设置stream_loss_factor')
+    import pdb; pdb.set_trace()
+    print('Debug: 设置stream_loss_factor')
     if model_args.stream_loss_factor is not None:
         model.stream_loss_factor = model_args.stream_loss_factor
     return model

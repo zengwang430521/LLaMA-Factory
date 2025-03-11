@@ -106,7 +106,7 @@ for subset in ['train', 'valid']:
             tar_data2.append(tar_item2)
 
 
-            if len(tar_data) >= 50:
+            if len(tar_data) >= 1:
                 os.makedirs(os.path.dirname(tar_file), exist_ok=True)
                 with open(tar_file, 'w', encoding='utf-8') as f:
                     json.dump(tar_data, f, ensure_ascii=False, indent=2)
