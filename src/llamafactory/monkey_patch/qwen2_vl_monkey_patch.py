@@ -150,8 +150,8 @@ class Qwen2VLStream(Qwen2VLForConditionalGeneration):
         Returns:
         ```"""
 
-        # import pdb; pdb.set_trace()
-        # print('Debug: 模型forward')
+        import pdb; pdb.set_trace()
+        print('Debug: 模型forward')
         # if not hasattr(self, "tokenizer"):
         #     from transformers.models.auto import AutoTokenizer
         #     self.tokenizer = AutoTokenizer.from_pretrained("/afs/zengwang/ckpt/Stream-Qwen2-VL-7B-Instruct")
@@ -286,7 +286,7 @@ class Qwen2VLStream(Qwen2VLForConditionalGeneration):
                 if self.stream_loss_type == 'focal_loss':
                     # focal loss
                     loss_fct_stream = FocalLoss()
-                    stream_loss = loss_fct_stream(logits, labels, stream_mask)
+                    stream_loss = loss_fct_stream(stream_logits, stream_labels, stream_mask)
                 else:
                     # bce loss
                     stream_loss = F.binary_cross_entropy_with_logits(stream_logits, stream_labels.float(),
@@ -741,7 +741,7 @@ class Qwen2VLStreamV3(Qwen2VLForConditionalGeneration):
                 if self.stream_loss_type == 'focal_loss':
                     # focal loss
                     loss_fct_stream = FocalLoss()
-                    stream_loss = loss_fct_stream(logits, labels, stream_mask)
+                    stream_loss = loss_fct_stream(stream_logits, stream_labels, stream_mask)
                 else:
                     # bce loss
                     stream_loss = F.binary_cross_entropy_with_logits(stream_logits, stream_labels.float(),
