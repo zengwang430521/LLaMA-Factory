@@ -508,6 +508,22 @@
     }
   },
 
+    "REC_perception_test_debug": {
+    "file_name": "processed/perception_test/REC_trainval_ovo_test_debug.json",
+    "formatting": "sharegpt_stream",
+    "columns": {
+      "messages": "messages",
+      "videos": "videos"
+    },
+    "tags": {
+      "role_tag": "role",
+      "content_tag": "content",
+      "user_tag": "user",
+      "assistant_tag": "assistant"
+    }
+  },
+
+
   "REC_thumos": {
     "file_name": "processed/thumos/REC_valid.json",
     "formatting": "sharegpt_stream",
