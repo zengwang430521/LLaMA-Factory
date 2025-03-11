@@ -129,11 +129,18 @@ def load_model(
     r"""
     Loads pretrained model.
     """
-    import pdb; pdb.set_trace()
-    print('Debug: 加载模型')
+    # import pdb; pdb.set_trace()
+    # print('Debug: 加载模型')
 
     init_kwargs = _get_init_kwargs(model_args)
     config = load_config(model_args)
+
+    # import pdb; pdb.set_trace()
+    # print('Debug: 设置stream_loss_factor')
+    if hasattr(config, 'stream_loss_factor'):
+        if model_args.stream_loss_factor is not None:
+            config.stream_loss_factor = model_args.stream_loss_factor
+
     patch_config(config, tokenizer, model_args, init_kwargs, is_trainable)
     apply_liger_kernel(config, model_args, is_trainable, require_logits=(finetuning_args.stage not in ["pt", "sft"]))
 
@@ -213,10 +220,5 @@ def load_model(
                 )
             )
 
-    import pdb; pdb.set_trace()
-    print('Debug: 设置stream_loss_factor')
-    if model_args.stream_loss_factor is not None:
-        if hasattr(model, 'stream_loss_factor'):
-            model.stream_loss_factor = model_args.stream_loss_factor
 
     return model
