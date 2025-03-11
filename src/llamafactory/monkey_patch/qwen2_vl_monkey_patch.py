@@ -95,40 +95,10 @@ class Qwen2VLStream(Qwen2VLForConditionalGeneration):
                 (masked), the loss is only computed for the tokens with labels in `[0, ..., config.vocab_size]`.
 
         Returns:
-
-        Example:
-
-        ```python
-        >>> from PIL import Image
-        >>> import requests
-        >>> from transformers import AutoProcessor, Qwen2VLForConditionalGeneration
-
-        >>> model = Qwen2VLForConditionalGeneration.from_pretrained("Qwen/Qwen2-VL-7B-Instruct")
-        >>> processor = AutoProcessor.from_pretrained("Qwen/Qwen2-VL-7B-Instruct")
-
-        >>> messages = [
-            {
-                "role": "user",
-                "content": [
-                    {"type": "image"},
-                    {"type": "text", "text": "What is shown in this image?"},
-                ],
-            },
-        ]
-        >>> url = "https://www.ilankelman.org/stopsigns/australia.jpg"
-        >>> image = Image.open(requests.get(url, stream=True).raw)
-
-        >>> text = processor.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
-        >>> inputs = processor(text=[text], images=[image], vision_infos=[vision_infos])
-
-        >>> # Generate
-        >>> generate_ids = model.generate(inputs.input_ids, max_length=30)
-        >>> tokenizer.batch_decode(generate_ids, skip_special_tokens=True, clean_up_tokenization_spaces=False)[0]
-        "The image shows a street scene with a red stop sign in the foreground. In the background, there is a large red gate with Chinese characters ..."
         ```"""
 
-        # import pdb; pdb.set_trace()
-        # print('Debug: 模型forward')
+        import pdb; pdb.set_trace()
+        print('Debug: 模型forward')
         # if not hasattr(self, "tokenizer"):
         #     from transformers.models.auto import AutoTokenizer
         #     self.tokenizer = AutoTokenizer.from_pretrained("/afs/zengwang/ckpt/Stream-Qwen2-VL-7B-Instruct")
@@ -182,7 +152,7 @@ class Qwen2VLStream(Qwen2VLForConditionalGeneration):
                 n_video_tokens = (input_ids == self.config.video_token_id).sum().item()
                 n_video_features = video_embeds.shape[0]
                 if n_video_tokens != n_video_features:
-                    import pdb;pdb.set_trace()
+                    # import pdb;pdb.set_trace()
                     raise ValueError(
                         f"Video features and video tokens do not match: tokens: {n_video_tokens}, features {n_video_features}"
                     )
