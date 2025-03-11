@@ -11,14 +11,19 @@ _CONFIG_FOR_DOC = "Qwen2VLConfig"
 class FocalLoss(nn.Module):
     def __init__(self, alpha=0.25, gamma=2.0, reduction='mean'):
         """
-        :param alpha: 平衡正负样本的权重因子
+        :param alpha: 正负样本的权重系数，可以是标量或 (2,) 形状的张量，分别指定负样本和正样本的权重
         :param gamma: 难易样本的聚焦参数
         :param reduction: 'mean' 或 'sum'
         """
         super(FocalLoss, self).__init__()
-        self.alpha = alpha
         self.gamma = gamma
         self.reduction = reduction
+
+        # 如果 alpha 是单个数值，转换成 (负类权重, 正类权重) 的形式
+        if isinstance(alpha, (float, int)):
+            self.alpha = torch.tensor([1 - alpha, alpha])
+        else:
+            self.alpha = torch.tensor(alpha)  # 假设用户传入 (负类权重, 正类权重)
 
     def forward(self, logits, labels, mask=None):
         """
@@ -26,17 +31,23 @@ class FocalLoss(nn.Module):
         :param labels: 二分类标签，形状应与 logits 相同，取值 0 或 1
         :param mask: 掩码，形状同 logits，用于指示有效样本，1 表示有效，0 表示忽略
         """
-        # 使用二分类交叉熵损失（未做 reduction）
+        labels = labels.long()  # 确保 labels 是整数索引
+
+        # 计算标准的 BCE loss
         bce_loss = F.binary_cross_entropy_with_logits(logits, labels.float(), reduction='none')
-        # 计算 p_t，注意这里的 -bce_loss 即为 log(p_t)
+
+        # 计算 p_t（正确类别的预测概率）
         pt = torch.exp(-bce_loss)
-        # 计算 focal loss
-        loss = self.alpha * (1 - pt) ** self.gamma * bce_loss
+
+        # 选择不同类别的 alpha
+        alpha_t = self.alpha.to(logits.device)[labels]
+
+        # 计算 Focal Loss
+        loss = alpha_t * (1 - pt) ** self.gamma * bce_loss
 
         if mask is not None:
-            loss = loss * mask  # 对无效位置的 loss 置为 0
+            loss = loss * mask  # 仅保留 mask 指定的有效样本
             if self.reduction == 'mean':
-                # 只计算 mask 中有效样本的均值
                 return loss.sum() / mask.sum()
             elif self.reduction == 'sum':
                 return loss.sum()
@@ -49,6 +60,7 @@ class FocalLoss(nn.Module):
                 return loss.sum()
             else:
                 return loss
+
 
 
 class Qwen2VLStreamConfig(Qwen2VLConfig):
