@@ -115,8 +115,11 @@ class Qwen2VLStream(Qwen2VLForConditionalGeneration):
         self.stream_loss_type = config.stream_loss_type
         self.stream_loss_factor = config.stream_loss_factor
         assert self.stream_head_dim in [1, 2]
+        if self.stream_head_dim == 2:
+            self.stream_head = nn.Linear(config.hidden_size, 2, bias=False)     # 二分类，回复/不回复
+        else:
+            self.stream_head = nn.Linear(config.hidden_size, 1, bias=True)     # 二分类，回复/不回复
 
-        self.stream_head = nn.Linear(config.hidden_size, self.stream_head_dim, bias=False)     # 二分类，回复/不回复
         self.post_init()
 
     @add_start_docstrings_to_model_forward(QWEN2_VL_INPUTS_DOCSTRING)
@@ -528,19 +531,8 @@ def fill_missing_pos_batch(pos, mask):
 
 
 
-class Qwen2VLStreamV3(Qwen2VLForConditionalGeneration):
+class Qwen2VLStreamV3(Qwen2VLStream):
     config_class = Qwen2VLStreamConfigV3
-
-    def __init__(self, config):
-        super().__init__(config)
-        self.stream_head_dim = config.stream_head_dim
-        self.stream_loss_type = config.stream_loss_type
-        self.stream_loss_factor = config.stream_loss_factor
-        assert self.stream_head_dim in [1, 2]
-
-        self.stream_head = nn.Linear(config.hidden_size, self.stream_head_dim, bias=False)     # 二分类，回复/不回复
-        self.post_init()
-
 
     @add_start_docstrings_to_model_forward(QWEN2_VL_INPUTS_DOCSTRING)
     @replace_return_docstrings(output_type=Qwen2VLCausalLMOutputWithPast, config_class=_CONFIG_FOR_DOC)
