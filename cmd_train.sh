@@ -42,9 +42,11 @@ torchrun $DISTRIBUTED_ARGS src/train.py \
 --video_maxlen 64 \
 --cutoff_len 4096 \
 --num_train_epochs 1 \
---save_steps 200 \
+--save_steps 1000 \
+--stream_head_dim 1 \
+--stream_loss_type focal_loss \
 --stream_loss_factor 2 \
---output_dir work_dirs/stream_v2_lora_13 \
+--output_dir work_dirs/stream_v2_lora_18 \
 --dataset \
 MMDuetIT_dvc_stream_v2_10k,\
 MMDuetIT_magqa_stream_v2_10k,\

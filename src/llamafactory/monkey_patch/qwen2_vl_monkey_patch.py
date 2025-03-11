@@ -110,6 +110,8 @@ class Qwen2VLStreamOutput(ModelOutput):
     """
 
     loss: Optional[torch.FloatTensor] = None
+    llm_loss: Optional[torch.FloatTensor] = None
+    stream_loss: Optional[torch.FloatTensor] = None
     logits: torch.FloatTensor = None
     stream_logits: torch.FloatTensor = None
     past_key_values: Optional[List[torch.FloatTensor]] = None
@@ -270,7 +272,8 @@ class Qwen2VLStream(Qwen2VLForConditionalGeneration):
             shift_labels = shift_labels.view(-1)
             # Enable model parallelism
             shift_labels = shift_labels.to(shift_logits.device)
-            loss = loss_fct(shift_logits, shift_labels)
+            llm_loss = loss_fct(shift_logits, shift_labels)
+            loss = llm_loss
 
         # stream head
         hidden_states = hidden_states.to(self.stream_head.weight.dtype)
@@ -321,6 +324,8 @@ class Qwen2VLStream(Qwen2VLForConditionalGeneration):
 
         return Qwen2VLStreamOutput(
             loss=loss,
+            llm_loss=llm_loss,
+            stream_loss=stream_loss,
             logits=logits,
             stream_logits=stream_logits,
             past_key_values=outputs.past_key_values,
