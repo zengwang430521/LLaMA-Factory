@@ -8,13 +8,62 @@ from torch.nn import BCELoss
 
 _CONFIG_FOR_DOC = "Qwen2VLConfig"
 
+class FocalLoss(nn.Module):
+    def __init__(self, alpha=0.25, gamma=2.0, reduction='mean'):
+        """
+        :param alpha: 平衡正负样本的权重因子
+        :param gamma: 难易样本的聚焦参数
+        :param reduction: 'mean' 或 'sum'
+        """
+        super(FocalLoss, self).__init__()
+        self.alpha = alpha
+        self.gamma = gamma
+        self.reduction = reduction
+
+    def forward(self, logits, labels, mask=None):
+        """
+        :param logits: 模型输出的 logits，形状为 (batch_size, *)
+        :param labels: 二分类标签，形状应与 logits 相同，取值 0 或 1
+        :param mask: 掩码，形状同 logits，用于指示有效样本，1 表示有效，0 表示忽略
+        """
+        # 使用二分类交叉熵损失（未做 reduction）
+        bce_loss = F.binary_cross_entropy_with_logits(logits, labels.float(), reduction='none')
+        # 计算 p_t，注意这里的 -bce_loss 即为 log(p_t)
+        pt = torch.exp(-bce_loss)
+        # 计算 focal loss
+        loss = self.alpha * (1 - pt) ** self.gamma * bce_loss
+
+        if mask is not None:
+            loss = loss * mask  # 对无效位置的 loss 置为 0
+            if self.reduction == 'mean':
+                # 只计算 mask 中有效样本的均值
+                return loss.sum() / mask.sum()
+            elif self.reduction == 'sum':
+                return loss.sum()
+            else:
+                return loss
+        else:
+            if self.reduction == 'mean':
+                return loss.mean()
+            elif self.reduction == 'sum':
+                return loss.sum()
+            else:
+                return loss
+
 
 class Qwen2VLStreamConfig(Qwen2VLConfig):
     model_type = "qwen2_vl_stream"
 
-    def __init__(self, stream_loss_factor=1.0, **kwargs):
+    def __init__(self,
+                 stream_head_dim=2,
+                 stream_loss_type=None,
+                 stream_loss_factor=1.0,
+                 **kwargs):
         super().__init__(**kwargs)
+        self.stream_head_dim = stream_head_dim
+        self.stream_loss_type = stream_loss_type
         self.stream_loss_factor = stream_loss_factor
+
 
 
 @dataclass
@@ -62,8 +111,12 @@ class Qwen2VLStream(Qwen2VLForConditionalGeneration):
 
     def __init__(self, config):
         super().__init__(config)
-        self.stream_head = nn.Linear(config.hidden_size, 2, bias=False)     # 二分类，回复/不回复
+        self.stream_head_dim = config.stream_head_dim
+        self.stream_loss_type = config.stream_loss_type
         self.stream_loss_factor = config.stream_loss_factor
+        assert self.stream_head_dim in [1, 2]
+
+        self.stream_head = nn.Linear(config.hidden_size, self.stream_head_dim, bias=False)     # 二分类，回复/不回复
         self.post_init()
 
     @add_start_docstrings_to_model_forward(QWEN2_VL_INPUTS_DOCSTRING)
@@ -97,8 +150,8 @@ class Qwen2VLStream(Qwen2VLForConditionalGeneration):
         Returns:
         ```"""
 
-        import pdb; pdb.set_trace()
-        print('Debug: 模型forward')
+        # import pdb; pdb.set_trace()
+        # print('Debug: 模型forward')
         # if not hasattr(self, "tokenizer"):
         #     from transformers.models.auto import AutoTokenizer
         #     self.tokenizer = AutoTokenizer.from_pretrained("/afs/zengwang/ckpt/Stream-Qwen2-VL-7B-Instruct")
@@ -211,17 +264,41 @@ class Qwen2VLStream(Qwen2VLForConditionalGeneration):
             # stream label 不需要做shift
             # Upcast to float if we need to compute the loss to avoid potential precision issues
             stream_logits = stream_logits.float()
-            loss_fct_stream = CrossEntropyLoss()
-            # Flatten the tokens
-            stream_logits = stream_logits.view(-1, 2)
-            stream_labels = stream_labels.view(-1)
-            # Enable model parallelism
-            stream_labels = stream_labels.to(stream_logits.device)
-            stream_loss = loss_fct_stream(stream_logits, stream_labels)
+
+            if self.stream_head_dim == 2:
+                if self.stream_loss_type == 'focal_loss':
+                    raise NotImplementedError('focal loss is not implemented for 2 dim')
+                else:
+                    loss_fct_stream = CrossEntropyLoss()
+                    # Flatten the tokens
+                    stream_logits = stream_logits.view(-1, 2)
+                    stream_labels = stream_labels.view(-1)
+                    # Enable model parallelism
+                    stream_labels = stream_labels.to(stream_logits.device)
+                    stream_loss = loss_fct_stream(stream_logits, stream_labels)
+            else:
+                stream_logits = stream_logits.view(-1)
+                stream_labels = stream_labels.view(-1)
+
+                stream_mask = stream_labels >= 0
+                stream_labels = stream_labels.clip(min=0)
+
+                if self.stream_loss_type == 'focal_loss':
+                    # focal loss
+                    loss_fct_stream = FocalLoss()
+                    stream_loss = loss_fct_stream(logits, labels, stream_mask)
+                else:
+                    # bce loss
+                    stream_loss = F.binary_cross_entropy_with_logits(stream_logits, stream_labels.float(),
+                                                                     reduction='none')
+                    stream_loss = stream_loss * stream_mask
+                    stream_loss = stream_loss.sum() / stream_mask.sum()
+
             if loss is not None:
                 loss += stream_loss * self.stream_loss_factor
             else:
                 loss = stream_loss * self.stream_loss_factor
+
 
         if not return_dict:
             output = (logits,) + outputs[1:]
@@ -401,8 +478,14 @@ AutoModelForVision2Seq.register(Qwen2VLStreamConfig, Qwen2VLStream)
 class Qwen2VLStreamConfigV3(Qwen2VLConfig):
     model_type = "qwen2_vl_stream_v3"
 
-    def __init__(self, stream_loss_factor=1.0, **kwargs):
+    def __init__(self,
+                 stream_head_dim=2,
+                 stream_loss_type=None,
+                 stream_loss_factor=1.0,
+                 **kwargs):
         super().__init__(**kwargs)
+        self.stream_head_dim = stream_head_dim
+        self.stream_loss_type = stream_loss_type
         self.stream_loss_factor = stream_loss_factor
 
 
@@ -450,9 +533,14 @@ class Qwen2VLStreamV3(Qwen2VLForConditionalGeneration):
 
     def __init__(self, config):
         super().__init__(config)
-        self.stream_head = nn.Linear(config.hidden_size, 2, bias=False)     # 二分类，不回复/回复
+        self.stream_head_dim = config.stream_head_dim
+        self.stream_loss_type = config.stream_loss_type
         self.stream_loss_factor = config.stream_loss_factor
+        assert self.stream_head_dim in [1, 2]
+
+        self.stream_head = nn.Linear(config.hidden_size, self.stream_head_dim, bias=False)     # 二分类，回复/不回复
         self.post_init()
+
 
     @add_start_docstrings_to_model_forward(QWEN2_VL_INPUTS_DOCSTRING)
     @replace_return_docstrings(output_type=Qwen2VLCausalLMOutputWithPast, config_class=_CONFIG_FOR_DOC)
@@ -485,8 +573,8 @@ class Qwen2VLStreamV3(Qwen2VLForConditionalGeneration):
         Returns:
         """
 
-        import pdb; pdb.set_trace()
-        print('Debug: 模型forward')
+        # import pdb; pdb.set_trace()
+        # print('Debug: 模型forward')
 
         output_attentions = output_attentions if output_attentions is not None else self.config.output_attentions
         output_hidden_states = (
@@ -610,7 +698,7 @@ class Qwen2VLStreamV3(Qwen2VLForConditionalGeneration):
         logits = self.lm_head(hidden_states)
 
         loss = None
-        if labels is not None and logits.requires_grad:
+        if labels is not None :
             # Upcast to float if we need to compute the loss to avoid potential precision issues
             logits = logits.float()
             # Shift so that tokens < n predict n
@@ -631,17 +719,41 @@ class Qwen2VLStreamV3(Qwen2VLForConditionalGeneration):
             # stream label 不需要做shift
             # Upcast to float if we need to compute the loss to avoid potential precision issues
             stream_logits = stream_logits.float()
-            loss_fct_stream = CrossEntropyLoss()
-            # Flatten the tokens
-            stream_logits = stream_logits.view(-1, 2)
-            stream_labels = stream_labels.view(-1)
-            # Enable model parallelism
-            stream_labels = stream_labels.to(stream_logits.device)
-            stream_loss = loss_fct_stream(stream_logits, stream_labels)
+
+            if self.stream_head_dim == 2:
+                if self.stream_loss_type == 'focal_loss':
+                    raise NotImplementedError('focal loss is not implemented for 2 dim')
+                else:
+                    loss_fct_stream = CrossEntropyLoss()
+                    # Flatten the tokens
+                    stream_logits = stream_logits.view(-1, 2)
+                    stream_labels = stream_labels.view(-1)
+                    # Enable model parallelism
+                    stream_labels = stream_labels.to(stream_logits.device)
+                    stream_loss = loss_fct_stream(stream_logits, stream_labels)
+            else:
+                stream_logits = stream_logits.view(-1)
+                stream_labels = stream_labels.view(-1)
+
+                stream_mask = stream_labels >= 0
+                stream_labels = stream_labels.clip(min=0)
+
+                if self.stream_loss_type == 'focal_loss':
+                    # focal loss
+                    loss_fct_stream = FocalLoss()
+                    stream_loss = loss_fct_stream(logits, labels, stream_mask)
+                else:
+                    # bce loss
+                    stream_loss = F.binary_cross_entropy_with_logits(stream_logits, stream_labels.float(),
+                                                                     reduction='none')
+                    stream_loss = stream_loss * stream_mask
+                    stream_loss = stream_loss.sum() / stream_mask.sum()
+
             if loss is not None:
                 loss += stream_loss * self.stream_loss_factor
             else:
                 loss = stream_loss * self.stream_loss_factor
+
 
         if not return_dict:
             output = (logits,) + outputs[1:]

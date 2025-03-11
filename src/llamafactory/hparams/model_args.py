@@ -314,6 +314,17 @@ class ModelArguments(QuantizationArguments, ProcessorArguments, ExportArguments,
         metadata={"help": "stream loss factor in stream model"},
     )
 
+    stream_loss_type: Optional[str] = field(
+        default=None,
+        metadata={"help": "stream loss type in stream model"},
+    )
+    stream_head_dim: Optional[int] = field(
+        default=2,
+        metadata={"help": "stream head dim in stream model"},
+    )
+
+
+
     def __post_init__(self):
         if self.model_name_or_path is None:
             raise ValueError("Please provide `model_name_or_path`.")
