@@ -702,12 +702,13 @@ class Qwen2VLStreamV3(Qwen2VLStream):
         # torch.eq(hidden_states[attention_mask==1, :], hidden_states1[attention_mask==1, :]).all()
         # (attention_mask == 0).nonzero()
 
-
+        hidden_states = outputs[0]
         hidden_states = hidden_states.to(self.lm_head.weight.dtype)
         logits = self.lm_head(hidden_states)
 
         loss = None
-        if labels is not None :
+        # if labels is not None and logits.requires_grad:
+        if labels is not None:
             # Upcast to float if we need to compute the loss to avoid potential precision issues
             logits = logits.float()
             # Shift so that tokens < n predict n
@@ -719,7 +720,8 @@ class Qwen2VLStreamV3(Qwen2VLStream):
             shift_labels = shift_labels.view(-1)
             # Enable model parallelism
             shift_labels = shift_labels.to(shift_logits.device)
-            loss = loss_fct(shift_logits, shift_labels)
+            llm_loss = loss_fct(shift_logits, shift_labels)
+            loss = llm_loss
 
         # stream head
         hidden_states = hidden_states.to(self.stream_head.weight.dtype)
@@ -770,6 +772,8 @@ class Qwen2VLStreamV3(Qwen2VLStream):
 
         return Qwen2VLStreamOutput(
             loss=loss,
+            llm_loss=llm_loss,
+            stream_loss=stream_loss,
             logits=logits,
             stream_logits=stream_logits,
             past_key_values=outputs.past_key_values,
