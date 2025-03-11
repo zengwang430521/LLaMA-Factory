@@ -129,8 +129,8 @@ def load_model(
     r"""
     Loads pretrained model.
     """
-    # import pdb; pdb.set_trace()
-    # print('Debug: 加载模型')
+    import pdb; pdb.set_trace()
+    print('Debug: 加载模型')
 
     init_kwargs = _get_init_kwargs(model_args)
     config = load_config(model_args)
@@ -216,5 +216,8 @@ def load_model(
     import pdb; pdb.set_trace()
     print('Debug: 设置stream_loss_factor')
     if model_args.stream_loss_factor is not None:
-        model.stream_loss_factor = model_args.stream_loss_factor
+        if hasattr(model, 'stream_loss_factor'):
+            model.stream_loss_factor = model_args.stream_loss_factor
+        elif hasattr(model, 'base_model'):
+
     return model

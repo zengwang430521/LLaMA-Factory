@@ -189,7 +189,8 @@ class Qwen2VLStream(Qwen2VLForConditionalGeneration):
         logits = self.lm_head(hidden_states)
 
         loss = None
-        if labels is not None and logits.requires_grad:
+        # if labels is not None and logits.requires_grad:
+        if labels is not None:
             # Upcast to float if we need to compute the loss to avoid potential precision issues
             logits = logits.float()
             # Shift so that tokens < n predict n
