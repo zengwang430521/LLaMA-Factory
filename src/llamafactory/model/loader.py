@@ -218,6 +218,5 @@ def load_model(
     if model_args.stream_loss_factor is not None:
         if hasattr(model, 'stream_loss_factor'):
             model.stream_loss_factor = model_args.stream_loss_factor
-        elif hasattr(model, 'base_model'):
 
     return model
