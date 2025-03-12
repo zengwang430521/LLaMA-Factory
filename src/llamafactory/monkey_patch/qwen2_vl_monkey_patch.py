@@ -167,8 +167,9 @@ class Qwen2VLStream(Qwen2VLForConditionalGeneration):
         Returns:
         ```"""
 
-        # import pdb; pdb.set_trace()
-        # print('Debug: 模型forward')
+        import pdb; pdb.set_trace()
+        print('Debug: 模型forward')
+
         # if not hasattr(self, "tokenizer"):
         #     from transformers.models.auto import AutoTokenizer
         #     self.tokenizer = AutoTokenizer.from_pretrained("/afs/zengwang/ckpt/Stream-Qwen2-VL-7B-Instruct")
@@ -582,8 +583,8 @@ class Qwen2VLStreamV3(Qwen2VLStream):
         Returns:
         """
 
-        # import pdb; pdb.set_trace()
-        # print('Debug: 模型forward')
+        import pdb; pdb.set_trace()
+        print('Debug: 模型forward')
 
         output_attentions = output_attentions if output_attentions is not None else self.config.output_attentions
         output_hidden_states = (
