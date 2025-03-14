@@ -599,7 +599,8 @@ def _encode_supervised_stream_example_v4(
             encode_elements = template._convert_elements_to_ids(tokenizer, elements)
 
             # attention mask
-            mask = [0 if t == frame_pad_id else 1 for t in encode_elements_stream]
+            encode_elements_mask = template._convert_elements_to_ids(tokenizer, elements_mask)
+            mask = [0 if t == frame_pad_id else 1 for t in encode_elements_mask]
 
             # 用于训练回复时机
             encode_elements_stream = template._convert_elements_to_ids(tokenizer, elements_stream)
