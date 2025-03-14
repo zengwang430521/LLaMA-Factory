@@ -2164,6 +2164,7 @@ PLUGINS = {
     "qwen2_vl_stream": Qwen2vlStreamPlugin,
     "qwen2_vl_stream_v2": Qwen2vlStreamPluginV2,
     "qwen2_vl_stream_v3": Qwen2vlStreamPluginV3,
+    "qwen2_vl_stream_v4": Qwen2vlStreamPluginV4,
     "video_llava": VideoLlavaPlugin,
     "mllama": MllamaPlugin,
 }

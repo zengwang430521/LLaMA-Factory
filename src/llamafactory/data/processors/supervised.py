@@ -541,8 +541,8 @@ def _encode_supervised_stream_example_v4(
     # 所以视频中每帧后都需要加上<|vision_end|><|im_end|>
     # 需要mask掉额外新加的token
 
-    # import pdb; pdb.set_trace()
-    # print('Debug V4: 产生input_ids, labels, stream_labels')
+    import pdb; pdb.set_trace()
+    print('Debug V4: 产生input_ids, labels, stream_labels')
 
     # import pdb; pdb.set_trace()
     messages, frame_idxs, frame_times, video_grid_thw = template.mm_plugin.process_messages(prompt + response, images, videos, processor)
@@ -827,6 +827,50 @@ def preprocess_supervised_dataset(
             model_inputs["frame_times"].append(frame_times[:num_video])
             model_inputs["video_grid_thw"].append(video_grid_thw[:num_video_grid])
 
+
+        elif data_args.template == 'qwen2_vl_stream_v4':
+            # qwen2_vl_stream 对话数据不进行验证, 并且需要额外的stream_labels
+            # 数据集中少量视频文件有问题，放弃这些数据
+            try:
+                input_ids, labels, stream_labels, frame_idxs, frame_times, video_grid_thw, masks, reserved_message_num = _encode_supervised_stream_example_v4(
+                    prompt=examples["_prompt"][i],
+                    response=examples["_response"][i],
+                    system=examples["_system"][i],
+                    tools=examples["_tools"][i],
+                    images=examples["_images"][i] or [],
+                    videos=examples["_videos"][i] or [],
+                    template=template,
+                    tokenizer=tokenizer,
+                    processor=processor,
+                    cutoff_len=data_args.cutoff_len,
+                    train_on_prompt=data_args.train_on_prompt,
+                    mask_history=data_args.mask_history,
+                )
+            except:
+                print(f'Skip broken data!!!:{examples["_videos"][i]}.')
+                continue
+
+            model_inputs["input_ids"].append(input_ids)
+            model_inputs["attention_mask"].append(masks)
+            model_inputs["labels"].append(labels)
+            model_inputs["stream_labels"].append(stream_labels)
+
+            messages = examples["_prompt"][i] + examples["_response"][i]
+            num_image, num_video, num_video_grid = get_image_video_grid_num(messages[:reserved_message_num])
+
+            images = examples["_images"][i]
+            if images is not None:
+                images = images[:num_image]
+            model_inputs["images"].append(images)
+
+            videos = examples["_videos"][i]
+            if videos is not None:
+                videos = videos[:num_video]
+            model_inputs["videos"].append(videos)
+
+            model_inputs["frame_idxs"].append(frame_idxs[:num_video])
+            model_inputs["frame_times"].append(frame_times[:num_video])
+            model_inputs["video_grid_thw"].append(video_grid_thw[:num_video_grid])
 
         else:
             if len(examples["_prompt"][i]) % 2 != 1 or len(examples["_response"][i]) != 1:
