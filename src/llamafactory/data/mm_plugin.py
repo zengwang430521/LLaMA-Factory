@@ -1857,7 +1857,8 @@ class Qwen2vlStreamPluginV4(Qwen2vlStreamPluginV3):
         merge_length: int = getattr(image_processor, "merge_size") ** 2
 
         # 判断视频应该怎么分段
-        video_time_segs = [], response_periods = []
+        video_time_segs = []
+        response_periods = []
         for idx, message in enumerate(messages):
             role = message['role']
             content = message["content"]
