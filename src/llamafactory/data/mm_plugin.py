@@ -1975,7 +1975,7 @@ class Qwen2vlStreamPluginV4(Qwen2vlStreamPluginV3):
                 stream_element = "<|vision_start|>"
                 for i, label in enumerate(frame_label):
                     stream_element += self.video_token * frame_seqlen + '<|vision_end|>'
-                    if i < frame_seqlen - 1:
+                    if i < frame_num - 1:
                         if label == 1:
                             stream_element += DO_RESPONSE_TOKEN
                         elif label == 0:
