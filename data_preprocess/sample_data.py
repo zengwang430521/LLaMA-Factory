@@ -35,9 +35,9 @@ import ijson
 # ]
 
 
-src_dir = '/home/SENSETIME/zengwang/myprojects/task_define_service/data/MMDuetIT/shot2story/annotations/processed/v2/'
+src_dir = '/home/SENSETIME/zengwang/myprojects/task_define_service/data/MMDuetIT/shot2story/annotations/processed/v4/'
 sample_items = [
-    ("dvc_train-human_anno-0.25_0.5_earlier_36948.json",    10000),
+    # ("dvc_train-human_anno-0.25_0.5_earlier_36949.json",    10000),
     ("magqa_train-0.25_0.5-earlier_36834.json",             10000),
 ]
 
@@ -53,7 +53,7 @@ for item in sample_items:
     tar_data = []
 
     with open(join(src_dir, src_file), 'r') as f:
-        for i, d in tqdm(enumerate(ijson.items(f, 'item'))):
+        for i, d in tqdm(enumerate(ijson.items(f, 'item', use_float=True))):
             if i in sample_idx:
                 tar_data.append(d)
     tar_file = '_'.join(src_file.split('_')[:-1] + [f'{len(tar_data)}.json'])

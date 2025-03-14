@@ -88,7 +88,7 @@ for subset in ['train', 'valid']:
 
                 messages.append({"role": "user", "content": "<video>", "time": [last_time, response_time]})
                 videos.append(video_path)
-                messages.append({"role": "assistant", "content": answer, "time": [response_time, response_time]})
+                messages.append({"role": "assistant", "content": answer, "time": response_period})
                 last_time = response_time
 
             tar_item = {"messages": messages, "videos": videos}

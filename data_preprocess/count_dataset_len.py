@@ -7,9 +7,10 @@ from tqdm import tqdm
 
 # root_dir = '/home/SENSETIME/zengwang/myprojects/task_define_service/data/LLaVA-Video-178K/processed/v2/'
 # root_dir = "/home/SENSETIME/zengwang/myprojects/task_define_service/data/MMDuetIT/shot2story/annotations/processed/v2/"
+root_dir = "/home/SENSETIME/zengwang/myprojects/task_define_service/data/MMDuetIT/shot2story/annotations/processed/v4/"
 # root_dir = "/home/SENSETIME/zengwang/myprojects/task_define_service/data/LLaVA-Video-178K/processed/stitch_v1/"
 # root_dir = "/home/SENSETIME/zengwang/myprojects/task_define_service/data/LLaVA-Video-178K/processed/stitch_v2/"
-root_dir = "/home/SENSETIME/zengwang/myprojects/task_define_service/data/LLaVA-Video-178K/processed/stitch_v4/"
+# root_dir = "/home/SENSETIME/zengwang/myprojects/task_define_service/data/LLaVA-Video-178K/processed/stitch_v4/"
 
 for filename in os.listdir(root_dir):
     if not filename.endswith('.json'):

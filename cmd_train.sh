@@ -48,16 +48,16 @@ torchrun $DISTRIBUTED_ARGS src/train.py \
 --stream_loss_factor 2 \
 --output_dir work_dirs/stream_v2_lora_18 \
 --dataset \
-MMDuetIT_dvc_stream_v2_10k,\
-MMDuetIT_magqa_stream_v2_10k,\
+MMDuetIT_dvc_stream_v4_10k,\
+MMDuetIT_magqa_stream_v4_10k,\
 llava_video_0_30s_academic_mc_stream_v2_2k,\
 llava_video_0_30s_academic_oe_stream_v2_4k,\
 llava_video_0_30s_academic_cap_stream_v2_4k,\
 llava_video_0_30s_youtube_mc_stream_v2_2k,\
 llava_video_0_30s_youtube_oe_stream_v2_4k,\
 llava_video_0_30s_youtube_cap_stream_v2_4k,\
-llava_video_0_30s_stitch_mc_v2_10k,\
-llava_video_0_30s_stitch_oe_v2_20k,\
+llava_video_0_30s_stitch_mc_v4_10k,\
+llava_video_0_30s_stitch_oe_v4_20k,\
 shot2story_ds70b_qa_10k,\
 REC_perception_test,\
 SSR_COIN_choice

@@ -21,7 +21,7 @@ for src_item in tqdm(src_data):
     # video_start_time = round(video_start_time)
     # if video_start_time > 0:
     #     print(video_start_time)
-    video_start_time = 0
+    video_start_time = 0.0
 
     messages, videos = [], []
 
@@ -31,7 +31,7 @@ for src_item in tqdm(src_data):
     conversations = src_item["conversation"]
     instruction = conversations[0]
     query_time = instruction['time']
-    query_time = round(query_time)      # 取整
+    query_time = float(round(query_time))      # 取整
     if query_time > video_start_time:
         video_message = {"role": "user", "content": "<video>", "time": [video_start_time, query_time]}
         messages.append(video_message)
@@ -57,7 +57,8 @@ for src_item in tqdm(src_data):
         t_start, t_end = src_conv['timespan']
         delta = t_end - t_start
         response_period = [t_start + 0.4 * delta, t_start + 0.6 * delta, t_end, t_end + 1 ]
-        response_time = t_end               # 为了充分训练，插入response的位置要尽量靠后一些
+        response_period = [float(t) for t in response_period]
+        response_time = float(t_end)               # 为了充分训练，插入response的位置要尽量靠后一些
 
         if response_time > last_time:
             video_message = {"role": "user", "content": "<video>", "time": [last_time, response_time]}
@@ -81,5 +82,5 @@ for src_item in tqdm(src_data):
         tar_data.append(tar_item)
 
 with open(tar_path, 'w', encoding='utf-8') as f:
-    json.dump(tar_data, f, ensure_ascii=False)
+    json.dump(tar_data, f, ensure_ascii=False, indent=2)
 print(len(tar_data))

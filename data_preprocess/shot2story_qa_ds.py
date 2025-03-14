@@ -280,11 +280,19 @@ if __name__ == '__main__':
             query_time = random.uniform(query_time_range[0], query_time_range[1])
             query_time = round(query_time)
 
-            answer_time_range = deepcopy(clip_times[answer_clip-1])
-            answer_time_range[0] = answer_time_range[0] * 0.75 + answer_time_range[1] * (1-0.75)    # 在clip的后75%回答
-            answer_time = random.uniform(answer_time_range[0], answer_time_range[1])
-            answer_time = round(answer_time)
+            '''
+            response_period: 表示可以进行回复的区间 [t1, t2, t3, t4]
+            0:  不回复
+            1:  回复
+            -:  不监督
+            ......t1 ...... t2 ...... t3 ......t4.......
+            000000----------111111111111---------0000000
+            '''
 
+            t_start, t_end = clip_times[answer_clip-1]
+            delta = t_end - t_start
+            response_period = [t_start + 0.4 * delta, t_start + 0.6 * delta, t_end, t_end + 1]
+            answer_time = t_end     # 为了充分训练，插入response的位置要尽量靠后一些
 
             messages, videos = [], []
             if query_time > 0:
@@ -295,7 +303,7 @@ if __name__ == '__main__':
 
             messages.append({"role": "user", "content": "<video>", "time": [query_time, answer_time]})
             videos.append(video_path)
-            messages.append({"role": "assistant", "content": answer, "time": [answer_time, answer_time]})
+            messages.append({"role": "assistant", "content": answer, "time": response_period})
 
 
             # # 剩余的视频如果大于1s，就加入，对于训练stream_head有帮助

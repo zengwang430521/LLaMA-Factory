@@ -20,7 +20,7 @@ instructions = [
 ]
 
 src_dir = "/home/SENSETIME/zengwang/myprojects/task_define_service/data/MMDuetIT/shot2story/annotations/"
-tar_dir = "/home/SENSETIME/zengwang/myprojects/task_define_service/data/MMDuetIT/shot2story/annotations/processed/v2"
+tar_dir = "/home/SENSETIME/zengwang/myprojects/task_define_service/data/MMDuetIT/shot2story/annotations/processed/v4"
 os.makedirs(tar_dir, exist_ok=True)
 src_path = join(src_dir, 'dvc_train-human_anno-0.25_0.5_earlier.json')
 tar_path = join(tar_dir, "dvc_train-human_anno-0.25_0.5_earlier.json")
@@ -55,6 +55,7 @@ for video_file in tqdm(src_data.keys()):
             t_start, t_end = src_conv['timespan']
             delta = t_end - t_start
             response_period = [t_start + 0.4 * delta, t_start + 0.6 * delta, t_end, t_end + 1]
+            response_period = [float(t) for t in response_period]
             response_time = t_end  # 为了充分训练，插入response的位置要尽量靠后一些
 
             if response_time <= last_time:
@@ -74,5 +75,5 @@ for video_file in tqdm(src_data.keys()):
             tar_data.append(tar_item)
 
 with open(tar_path, 'w', encoding='utf-8') as f:
-    json.dump(tar_data, f, ensure_ascii=False)
+    json.dump(tar_data, f, ensure_ascii=False, indent=2)
 print(len(tar_data))
