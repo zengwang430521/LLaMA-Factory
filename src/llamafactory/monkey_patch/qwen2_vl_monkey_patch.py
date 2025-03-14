@@ -70,11 +70,13 @@ class Qwen2VLStreamConfig(Qwen2VLConfig):
                  stream_head_dim=2,
                  stream_loss_type=None,
                  stream_loss_factor=1.0,
+                 llm_loss_factor=1.0,
                  **kwargs):
         super().__init__(**kwargs)
         self.stream_head_dim = stream_head_dim
         self.stream_loss_type = stream_loss_type
         self.stream_loss_factor = stream_loss_factor
+        self.llm_loss_factor = llm_loss_factor
 
 
 
@@ -128,6 +130,8 @@ class Qwen2VLStream(Qwen2VLForConditionalGeneration):
         self.stream_head_dim = config.stream_head_dim
         self.stream_loss_type = config.stream_loss_type
         self.stream_loss_factor = config.stream_loss_factor
+        self.llm_loss_factor = config.llm_loss_factor
+
         assert self.stream_head_dim in [1, 2]
         if self.stream_head_dim == 2:
             self.stream_head = nn.Linear(config.hidden_size, 2, bias=False)     # 二分类，回复/不回复
@@ -274,7 +278,7 @@ class Qwen2VLStream(Qwen2VLForConditionalGeneration):
             # Enable model parallelism
             shift_labels = shift_labels.to(shift_logits.device)
             llm_loss = loss_fct(shift_logits, shift_labels)
-            loss = llm_loss
+            loss = llm_loss * self.llm_loss_factor
 
         # stream head
         hidden_states = hidden_states.to(self.stream_head.weight.dtype)
@@ -503,11 +507,13 @@ class Qwen2VLStreamConfigV3(Qwen2VLConfig):
                  stream_head_dim=2,
                  stream_loss_type=None,
                  stream_loss_factor=1.0,
+                 llm_loss_factor=1.0,
                  **kwargs):
         super().__init__(**kwargs)
         self.stream_head_dim = stream_head_dim
         self.stream_loss_type = stream_loss_type
         self.stream_loss_factor = stream_loss_factor
+        self.llm_loss_factor = llm_loss_factor
 
 
 def fill_missing_pos_batch(pos, mask):
@@ -722,7 +728,7 @@ class Qwen2VLStreamV3(Qwen2VLStream):
             # Enable model parallelism
             shift_labels = shift_labels.to(shift_logits.device)
             llm_loss = loss_fct(shift_logits, shift_labels)
-            loss = llm_loss
+            loss = llm_loss * self.llm_loss_factor
 
         # stream head
         hidden_states = hidden_states.to(self.stream_head.weight.dtype)

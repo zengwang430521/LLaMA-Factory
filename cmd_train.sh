@@ -31,8 +31,8 @@ torchrun $DISTRIBUTED_ARGS src/train.py \
 --bf16 \
 --per_device_train_batch_size 1 \
 --gradient_accumulation_steps 16 \
---model_name_or_path /afs/zengwang/ckpt/Stream-Qwen2-VL-7B-Instruct \
---template qwen2_vl_stream_v2 \
+--model_name_or_path /afs/zengwang/ckpt/StreamV3-Qwen2-VL-7B-Instruct \
+--template qwen2_vl_stream_v4 \
 --freeze_vision_tower \
 --finetuning_type lora \
 --lora_rank 8 \
@@ -43,10 +43,9 @@ torchrun $DISTRIBUTED_ARGS src/train.py \
 --cutoff_len 4096 \
 --num_train_epochs 1 \
 --save_steps 1000 \
---stream_head_dim 1 \
---stream_loss_type focal_loss \
+--stream_head_dim 2 \
 --stream_loss_factor 2 \
---output_dir work_dirs/stream_v2_lora_18 \
+--output_dir work_dirs/stream_v4_lora_20 \
 --dataset \
 MMDuetIT_dvc_stream_v4_10k,\
 MMDuetIT_magqa_stream_v4_10k,\

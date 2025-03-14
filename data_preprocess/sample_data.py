@@ -37,7 +37,7 @@ import ijson
 
 src_dir = '/home/SENSETIME/zengwang/myprojects/task_define_service/data/MMDuetIT/shot2story/annotations/processed/v4/'
 sample_items = [
-    # ("dvc_train-human_anno-0.25_0.5_earlier_36949.json",    10000),
+    ("dvc_train-human_anno-0.25_0.5_earlier_36949.json",    10000),
     ("magqa_train-0.25_0.5-earlier_36834.json",             10000),
 ]
 

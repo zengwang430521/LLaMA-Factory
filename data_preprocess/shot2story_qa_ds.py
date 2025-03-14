@@ -230,7 +230,7 @@ if __name__ == '__main__':
 
     # 处理数据
     tar_data = []
-    tar_file = f'/home/SENSETIME/zengwang/myprojects/task_define_service/data/shot2story/processed/qa_{MODEL}_v2.json'
+    tar_file = f'/home/SENSETIME/zengwang/myprojects/task_define_service/data/shot2story/processed/qa_{MODEL}_v4.json'
     for item in tqdm(data):
         video = item['video']
         result_file = join(save_dir, f"{video}.json")

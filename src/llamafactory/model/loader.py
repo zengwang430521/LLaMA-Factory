@@ -138,6 +138,9 @@ def load_model(
     # import pdb; pdb.set_trace()
     # print('Debug: 设置stream_loss_factor')
     if hasattr(config, 'stream_loss_factor'):
+        if model_args.llm_loss_factor is not None:
+            config.llm_loss_factor = model_args.llm_loss_factor
+
         if model_args.stream_loss_type is not None:
             config.stream_loss_type = model_args.stream_loss_type
         if model_args.stream_loss_factor is not None:
