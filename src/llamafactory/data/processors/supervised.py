@@ -605,7 +605,7 @@ def _encode_supervised_stream_example_v4(
             # 用于训练回复时机
             encode_elements_stream = template._convert_elements_to_ids(tokenizer, elements_stream)
             tmp_stream_labels = []
-            for t in tmp_stream_labels:
+            for t in encode_elements_stream:
                 if t == do_response_id:
                     tmp_stream_labels.append(1)
                 elif t == no_response_id:
