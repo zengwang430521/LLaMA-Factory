@@ -1869,7 +1869,7 @@ class Qwen2vlStreamPluginV4(Qwen2vlStreamPluginV3):
                     video_time_segs.append([time[i], time[i + 1]])
                     response_periods.append(None)
 
-                if idx + 1 < len(message):
+                if idx + 1 < len(messages):
                     next_role = messages[idx+1]["role"]
                     next_time = messages[idx+1]["time"]
                     if next_role == 'assistant':
