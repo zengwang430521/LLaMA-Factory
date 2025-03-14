@@ -1287,7 +1287,7 @@ class Qwen2vlStreamPluginV2(BasePlugin):
             video_grid_thw.append(torch.tensor(grid_thw))
 
             frame_idxs.append(sample_idxs)
-            frame_times.append(sample_times[::2])
+            frame_times.append(sample_times[1::2])
 
         mm_inputs["video_grid_thw"] = video_grid_thw
         mm_inputs["frame_times"] = frame_times
@@ -1710,7 +1710,7 @@ class Qwen2vlStreamPluginV3(BasePlugin):
             video_grid_thw.append(torch.tensor(grid_thw))
 
             frame_idxs.append(sample_idxs)
-            frame_times.append(sample_times[::2])
+            frame_times.append(sample_times[1::2])
 
         mm_inputs["video_grid_thw"] = video_grid_thw
         mm_inputs["frame_times"] = frame_times
