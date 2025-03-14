@@ -37,6 +37,11 @@
         "time": [3.0, 100000.0]
       },
       {
+        "content": "Why is this video funny?",
+        "role": "user",
+        "time": [100000.0, 100000.0]
+      },
+      {
         "content": "Because a baby is reading, and he is so cute!",
         "role": "assistant",
         "time": [100000.0, 100000.0]
