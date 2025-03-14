@@ -1863,6 +1863,7 @@ class Qwen2vlStreamPluginV4(Qwen2vlStreamPluginV3):
             content = message["content"]
             if VIDEO_PLACEHOLDER in content:
                 time = message['time']
+
                 for i in range(0, len(time), 2):
                     video_time_segs.append([time[i], time[i + 1]])
                     response_periods.append(None)
