@@ -94,14 +94,17 @@ VISION_MODELS = set()
 
 # TODO: 暂时借用一下现有的special token, 要规范的话，得用新的special token
 NO_RESPONSE_TOKEN = '<|quad_end|>'          # 不能进行回复
-DO_RESPONSE_TOKEN = '<|quad_start|>'   # 应该进行回复
-
+DO_RESPONSE_TOKEN = '<|quad_start|>'        # 应该进行回复
+NULL_RESPONSE_TOKEN = '<|object_ref_start|>'
 
 # TODO: 暂时借用一下现有的special token, 要规范的话，得用新的special token
 FRAME_END_TOKEN = '<|quad_end|>'          # 表示每帧的最后一个vision token
 
 # TODO: 暂时借用一下现有的special token, 要规范的话，得用新的special token
-FRAME_PAD_TOKEN = '<|quad_end|>'          # 表示每帧的最后一个vision token
+FRAME_PAD_TOKEN = '<|quad_end|>'          # 表示这些token是pad的，需要mask掉
+
+
+
 
 
 class DownloadSource(str, Enum):

@@ -17,9 +17,9 @@ from typing import TYPE_CHECKING, Any, Dict, List, Optional, Sequence, Tuple
 
 from ...extras import logging
 from ...extras.constants import (
-    IGNORE_INDEX, DO_RESPONSE_TOKEN, NO_RESPONSE_TOKEN,
-    VIDEO_PLACEHOLDER, FRAME_END_TOKEN, FRAME_PAD_TOKEN,
-    VIDEO_PLACEHOLDER, IMAGE_PLACEHOLDER)
+    IGNORE_INDEX, VIDEO_PLACEHOLDER, IMAGE_PLACEHOLDER,
+    DO_RESPONSE_TOKEN, NO_RESPONSE_TOKEN, NULL_RESPONSE_TOKEN,
+    FRAME_END_TOKEN, FRAME_PAD_TOKEN)
 from .processor_utils import greedy_knapsack, infer_seqlen
 from copy import deepcopy
 
@@ -459,6 +459,169 @@ def _encode_supervised_stream_example_v3(
 
             # mask
             mask = [0 if t == frame_pad_id else 1 for t in encode_elements_stream]
+
+            cur_len = len(encode_elements)
+            if total_len + cur_len > cutoff_len:
+                '''
+                加上之后会超出长度。
+                因为可能有视频存在，把<|video_pad|>截断的话，get_rope_index会出问题,
+                所以不能直接做截断, 干脆放弃这轮对话
+                '''
+                break
+
+            input_ids += encode_elements
+            labels += [IGNORE_INDEX] * len(encode_elements)
+            stream_labels += tmp_stream_labels
+            masks += mask
+            reserved_message_num += 1
+
+        elif message["role"] == Role.ASSISTANT.value:
+            # 现在的写法非常死板，如果elements中本身有内容，表示是特殊情况,需要额外处理
+            assert len(elements) == 0
+            elements += template.format_assistant.apply(content=message["content"])
+            prefix = elements[:1]
+            content = elements[1:]
+            encoded_prefix = template._convert_elements_to_ids(tokenizer, prefix)
+            encoded_content = template._convert_elements_to_ids(tokenizer, content)
+            encode_elements = encoded_prefix + encoded_content
+            if mask_history and i < len(messages) - 1:
+                encode_labels = [IGNORE_INDEX] * len(encoded_prefix + encoded_content)
+            else:
+                encode_labels = [IGNORE_INDEX] * len(encoded_prefix) + encoded_content
+
+            cur_len = len(encode_elements)
+            if total_len + cur_len >= cutoff_len:
+                encode_elements = encode_elements[:cutoff_len-total_len]
+                encode_labels = encode_labels[:cutoff_len-total_len]
+
+
+            input_ids += encode_elements
+            labels += encode_labels
+            # assistant 部分没有视频，不用训练stream_head
+            stream_labels += [IGNORE_INDEX] * len(encode_elements)
+            masks += [1] * len(encode_elements)
+            reserved_message_num += 1
+
+        elif message["role"] == Role.FUNCTION.value:
+            raise NotImplementedError("Not implemented role:{}".format(message["role"]))
+        else:
+            raise NotImplementedError("Unexpected role: {}".format(message["role"]))
+
+    assert len(input_ids) == len(labels) and len(input_ids) == len(stream_labels)
+
+    '''把<|video_pad|>截断的话， get_rope_index会出问题'''
+    # if len(input_ids) > cutoff_len:
+    #     # import pdb; pdb.set_trace()
+    #     input_ids = input_ids[:cutoff_len]
+    #     labels = labels[:cutoff_len]
+    #     stream_labels = stream_labels[:cutoff_len]
+    #     masks = masks[:cutoff_len]
+
+    return input_ids, labels, stream_labels, frame_idxs, frame_times, video_grid_thw, masks,reserved_message_num
+
+
+
+'''修改代码，在一定范围内回复都可以'''
+def _encode_supervised_stream_example_v4(
+    prompt: Sequence[Dict[str, str]],
+    response: Sequence[Dict[str, str]],
+    system: Optional[str],
+    tools: Optional[str],
+    images: Sequence["ImageInput"],
+    videos: Sequence["VideoInput"],
+    template: "Template",
+    tokenizer: "PreTrainedTokenizer",
+    processor: Optional["ProcessorMixin"],
+    cutoff_len: int,
+    train_on_prompt: bool,
+    mask_history: bool,
+) -> Tuple[List[int], List[int]]:
+    # <video> <text> <video> 交错的版本
+    # stream labels 应该在<|im_end|>上计算。
+    # 所以视频中每帧后都需要加上<|vision_end|><|im_end|>
+    # 需要mask掉额外新加的token
+
+    # import pdb; pdb.set_trace()
+    # print('Debug V4: 产生input_ids, labels, stream_labels')
+
+    # import pdb; pdb.set_trace()
+    messages, frame_idxs, frame_times, video_grid_thw = template.mm_plugin.process_messages(prompt + response, images, videos, processor)
+    input_ids, labels = template.mm_plugin.process_token_ids([], [], images, videos, tokenizer, processor)
+    masks = [1] * len(input_ids)
+
+    # TODO: format 应该放在别的地方，先暂时放在这里了
+    # TODO: 暂时采用粗暴的后截断，和LLAMA_FACTORY默认的截断方式不一致
+    # import pdb; pdb.set_trace()
+    # print('Debug: 产生input_ids, labels, stream_labels')
+    assert not template.efficient_eos
+
+    system = system or template.default_system
+
+    # 用于stream_head回复时机的训练，
+    frame_pad_id = tokenizer.encode(FRAME_PAD_TOKEN)[0]    # pad的需要mask的token
+    judge_id = tokenizer.encode('<|im_end|>')[0]           # stream 判别点
+    do_response_id = tokenizer.encode(DO_RESPONSE_TOKEN)[0]
+    no_response_id = tokenizer.encode(NO_RESPONSE_TOKEN)[0]
+    null_response_id = tokenizer.encode(NULL_RESPONSE_TOKEN)[0]
+
+    stream_labels = [IGNORE_INDEX] * len(labels)
+
+    reserved_message_num = 0
+    for i, message in enumerate(messages):
+        total_len = len(input_ids)
+
+        '''超出长度就不要了'''
+        if total_len >= cutoff_len:
+            break
+
+        elements = []
+        if i == 0:
+            elements += template.format_prefix.apply()
+            if system or tools:
+                tool_text = template.format_tools.apply(content=tools)[0] if tools else ""
+                elements += template.format_system.apply(content=(system + tool_text))
+
+        elements_mask = deepcopy(elements)
+        elements_stream = deepcopy(elements)
+
+        if message["role"] in [Role.USER.value, Role.OBSERVATION.value]:
+            if message["role"] == Role.USER.value:
+                elements += template.format_user.apply(content=message["content"], idx=str(i // 2))
+                elements_mask += template.format_user.apply(content=message["content_mask"], idx=str(i // 2))
+                elements_stream += template.format_user.apply(content=message["content_stream"], idx=str(i // 2))
+
+            elif message["role"] == Role.OBSERVATION.value:
+                elements += template.format_observation.apply(content=message["content"])
+                elements_mask += template.format_observation.apply(content=message["content_mask"])
+                elements_stream += template.format_observation.apply(content=message["content_stream"])
+
+            # 实际的输入
+            encode_elements = template._convert_elements_to_ids(tokenizer, elements)
+
+            # attention mask
+            mask = [0 if t == frame_pad_id else 1 for t in encode_elements_stream]
+
+            # 用于训练回复时机
+            encode_elements_stream = template._convert_elements_to_ids(tokenizer, elements_stream)
+            tmp_stream_labels = []
+            for t in tmp_stream_labels:
+                if t == do_response_id:
+                    tmp_stream_labels.append(1)
+                elif t == no_response_id:
+                    tmp_stream_labels.append(0)
+                else:
+                    tmp_stream_labels.append(IGNORE_INDEX)
+
+            need_response = False
+            if i + 1 < len(messages):
+                next_message = messages[i + 1]
+                need_response = (next_message["role"] == Role.ASSISTANT.value)
+
+            # 最后一个判定点, 用 encode_elements 找
+            for idx, token_idx in enumerate(encode_elements):
+                if token_idx == judge_id:
+                    judge_spot =idx
+            tmp_stream_labels[judge_spot] = 1 if need_response else 0
 
             cur_len = len(encode_elements)
             if total_len + cur_len > cutoff_len:

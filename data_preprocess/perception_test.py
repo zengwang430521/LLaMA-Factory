@@ -56,7 +56,7 @@ for subset in ['train', 'valid']:
             filtered_action = [action for action in item["action_localisation"] if action['label'] == activity]
 
             query = query_template.format(activity=activity.lower())
-            first_response_time = filtered_action[0]['timestamps'][1] * 1e-6
+            first_response_time = filtered_action[0]['timestamps'][0] * 1e-6
 
             max_query_time = math.floor(first_response_time - 1)
             max_query_time = max(max_query_time, 0)
@@ -71,7 +71,20 @@ for subset in ['train', 'valid']:
             last_time = query_time
             for count, action in enumerate(filtered_action, start=1):
                 answer = str(count)
-                response_time = action['timestamps'][1] * 1e-6
+                # response_time = action['timestamps'][1] * 1e-6
+
+                '''
+                response_period: 表示可以进行回复的区间 [t1, t2, t3, t4]
+                0:  不回复
+                1:  回复
+                -:  不监督
+                ......t1 ...... t2 ...... t3 ......t4.......
+                000000----------111111111111---------0000000
+                '''
+                t_start, t_end = action['timestamps'][0] * 1e-6, action['timestamps'][1] * 1e-6
+                delta = t_end - t_start
+                response_period = [t_start + 0.4 * delta, t_start + 0.6 * delta, t_end, t_end + 1]
+                response_time = t_end  # 为了充分训练，插入response的位置要尽量靠后一些
 
                 messages.append({"role": "user", "content": "<video>", "time": [last_time, response_time]})
                 videos.append(video_path)
