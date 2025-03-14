@@ -1961,8 +1961,8 @@ class Qwen2vlStreamPluginV4(Qwen2vlStreamPluginV3):
                 # 每一帧最后都需要加上<|vision_end|><|im_end|>
                 frame_num = video_grid_thw[num_video_tokens][0]
                 frame_seqlen = video_grid_thw[num_video_tokens][1:].prod() // merge_length if self.expand_mm_tokens else 1
-                frame_label = frame_labels
-                assert frame_seqlen == len(frame_label)
+                frame_label = frame_labels[num_video_tokens]
+                assert frame_num == len(frame_label)
 
                 video_element = ("<|vision_start|>" +
                                  (self.video_token * frame_seqlen + '<|vision_end|><|im_end|>') * (frame_num -1) +
