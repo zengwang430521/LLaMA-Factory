@@ -1849,8 +1849,8 @@ class Qwen2vlStreamPluginV4(Qwen2vlStreamPluginV3):
         videos: Sequence["VideoInput"],
         processor: Optional["ProcessorMixin"],
     ) -> List[Dict[str, str]]:
-        import pdb; pdb.set_trace()
-        print("DebugV4: process_messages")
+        # import pdb; pdb.set_trace()
+        # print("DebugV4: process_messages")
 
         self._validate_input(images, videos)
         image_processor: "BaseImageProcessor" = getattr(processor, "image_processor")
@@ -1876,8 +1876,8 @@ class Qwen2vlStreamPluginV4(Qwen2vlStreamPluginV3):
                         response_periods[-1] = next_time
 
 
-        import pdb; pdb.set_trace()
-        print("获取视频尺寸")
+        # import pdb; pdb.set_trace()
+        # print("获取视频尺寸")
 
         # mm_inputs = self._get_mm_inputs(images, videos, processor, video_time_segs)
         mm_inputs = self._get_fake_mm_inputs(images, videos, processor, video_time_segs)
