@@ -543,7 +543,7 @@
     }
   },
   "SSR_COIN_choice": {
-    "file_name": "processed/COIN/SSR_COIN_choice.json",
+    "file_name": "processed/COIN/SSR_COIN_choice_v4.json",
     "formatting": "sharegpt_stream",
     "columns": {
       "messages": "messages",
