@@ -14,8 +14,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
+import os.path
 from typing import TYPE_CHECKING, List, Optional
+
+import torch
 
 from ...data import SFTDataCollatorWith4DAttentionMask, get_dataset, get_template_and_fix_tokenizer
 from ...extras.constants import IGNORE_INDEX
@@ -129,6 +131,18 @@ def run_sft(
     # Evaluation
     import pdb; pdb.set_trace()
     print('Debug: Eval')
+    # 强行加载stream_head_weight
+    from safetensors.torch import load_file
+    import os
+    import torch
+    file_path = os.path.join(training_args.resume_from_checkpoint, 'adapter_model.safetensors')
+    tensors = load_file(file_path)
+    print(f"In model: {model.base_model.model.stream_head.weight}")
+    print(f"In ckpt: {tensors['base_model.model.stream_head.weight']}")
+    with torch.no_grad():
+        model.base_model.model.stream_head.lora_A.default.weight.fill_(0)
+        model.base_model.model.stream_head.lora_B.default.weight.fill_(0)
+        model.base_model.model.stream_head.weight.copy_(tensors['base_model.model.stream_head.weight'].to(model.device))
 
     if training_args.do_eval:
         metrics = trainer.evaluate(metric_key_prefix="eval", **gen_kwargs)

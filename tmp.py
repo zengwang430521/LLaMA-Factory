@@ -1,59 +1,49 @@
 import torch
+from peft.utils.save_and_load import set_peft_model_state_dict
+from peft.peft_model
 
 
-def fill_missing_pos_batch(pos, mask):
-    """
-    pos: torch.LongTensor, shape = (3, batch, n)
-    mask: torch.BoolTensor, shape = (batch, n)
 
-    对于 mask 为 False 的位置，所有行都使用 pos 第一行计算出的值进行填充，
-    填充值为：pos[0, batch, 左侧最近有效索引] + (当前位置索引 - 左侧最近有效索引)。
-    """
-    mask = mask.bool()
-    batch, n = mask.shape  # batch 和 n 的大小
-    # 生成索引 (batch, n)
-    idx = torch.arange(n, device=pos.device).unsqueeze(0).expand(batch, n)
+model.base_model.model.stream_head.lora_A.default.weight
+Parameter containing:
+tensor([[ 0.0149,  0.0154, -0.0007,  ...,  0.0149, -0.0144,  0.0017],
+        [ 0.0061,  0.0074, -0.0090,  ...,  0.0156,  0.0133, -0.0157],
+        [-0.0015,  0.0121,  0.0006,  ...,  0.0003,  0.0132,  0.0129],
+        ...,
+        [-0.0074,  0.0156, -0.0131,  ...,  0.0035,  0.0148, -0.0101],
+        [ 0.0145,  0.0146,  0.0157,  ...,  0.0003,  0.0023, -0.0043],
+        [ 0.0096,  0.0077, -0.0074,  ...,  0.0011, -0.0069, -0.0166]],
+       device='cuda:0', requires_grad=True)
 
-    # 对于 mask=False 的位置，将索引置为 -1
-    valid_idx = torch.where(mask, idx, torch.full_like(idx, -1))
+model.base_model.model.stream_head.lora_B.default.weight
+Parameter containing:
+tensor([[0., 0., 0., 0., 0., 0., 0., 0.],
+        [0., 0., 0., 0., 0., 0., 0., 0.]], device='cuda:0', requires_grad=True)
 
-    # 计算沿 n 维的累计最大值，得到每个位置左侧最近的有效索引
-    cum_max, _ = torch.cummax(valid_idx, dim=1)
+model.base_model.model.stream_head.base_layer.weight
+Parameter containing:
+tensor([[-0.0162, -0.0306,  0.0081,  ...,  0.0304, -0.0118, -0.0223],
+        [ 0.0172, -0.0182, -0.0176,  ..., -0.0066, -0.0225,  0.0153]],
 
-    # 计算当前位置与左侧最近有效位置之间的差值
-    diff = idx - cum_max
+=========================================================================================
 
-    # 从 pos 第一行中取出有效值，并加上 diff 得到填充值
-    # pos[0] 的 shape 为 (batch, n)
-    pos_cum_max, _ = torch.cummax(pos, dim=-1)
-    pos_cum_max, _ = pos_cum_max.max(dim=0)
-    filled = pos_cum_max.gather(dim=1, index=cum_max) + diff
+model.base_model.model.stream_head.lora_A.default.weight
+Parameter containing:
+tensor([[ 0.0149,  0.0154, -0.0007,  ...,  0.0149, -0.0144,  0.0017],
+        [ 0.0061,  0.0074, -0.0090,  ...,  0.0156,  0.0133, -0.0157],
+        [-0.0015,  0.0121,  0.0006,  ...,  0.0003,  0.0132,  0.0129],
+        ...,
+        [-0.0074,  0.0156, -0.0131,  ...,  0.0035,  0.0148, -0.0101],
+        [ 0.0145,  0.0146,  0.0157,  ...,  0.0003,  0.0023, -0.0043],
+        [ 0.0096,  0.0077, -0.0074,  ...,  0.0011, -0.0069, -0.0166]],
+       device='cuda:0', requires_grad=True)
 
-    # 扩展 mask 到 shape (3, batch, n)
-    mask_expanded = mask.unsqueeze(0).expand_as(pos)
-    # 扩展 filled 到 shape (3, batch, n)
-    filled_expanded = filled.unsqueeze(0).expand_as(pos)
+model.base_model.model.stream_head.lora_B.default.weight
+Parameter containing:
+tensor([[0., 0., 0., 0., 0., 0., 0., 0.],
+        [0., 0., 0., 0., 0., 0., 0., 0.]], device='cuda:0', requires_grad=True)
 
-    # mask 为 True 的位置保留原 pos 值，否则用 filled 替换
-    result = torch.where(mask_expanded, pos, filled_expanded)
-    return result
-
-pos = torch.tensor([
-    [[1, 2, 2, 0, 0, 3, 4], [10, 11,  0, 0, 11, 15, 16]],  # 第一层 (参考层)
-    [[5, 6, 6, 0, 0, 8, 9], [20, 21, 0, 0, 21, 25, 26]],  # 第二层
-    [[10, 11, 11, 0, 0, 13, 14], [30, 31,  0, 0, 31, 35, 36]]  # 第三层
-])
-
-mask = torch.tensor([
-    [True, True, True, False, False, True, True],  # batch=0 的 mask
-    [True, True, False, False, True, True, True]   # batch=1 的 mask（不同的情况）
-])
-
-output = fill_missing_pos_batch(pos, mask)
-# print(output)
-
-print(pos[:, 0, :])
-print(output[:, 0, :])
-
-print(pos[:, 1, :])
-print(output[:, 1, :])
+model.base_model.model.stream_head.base_layer.weight
+Parameter containing:
+tensor([[-0.0162, -0.0306,  0.0081,  ...,  0.0304, -0.0118, -0.0223],
+        [ 0.0172, -0.0182, -0.0176,  ..., -0.0066, -0.0225,  0.0153]],
