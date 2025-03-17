@@ -593,11 +593,11 @@ class Qwen2VLStreamV3(Qwen2VLStream):
         print('Debug: 模型forward')
 
 
-        # if not hasattr(self, "tokenizer"):
-        #     from transformers.models.auto import AutoTokenizer
-        #     self.tokenizer = AutoTokenizer.from_pretrained("/afs/zengwang/ckpt/Stream-Qwen2-VL-7B-Instruct")
-        #     input_texts = self.tokenizer.batch_decode(input_ids)
-        #     self.tokenizer.batch_decode(input_ids[labels!=-100])
+        if not hasattr(self, "tokenizer"):
+            from transformers.models.auto import AutoTokenizer
+            self.tokenizer = AutoTokenizer.from_pretrained("/afs/zengwang/ckpt/Stream-Qwen2-VL-7B-Instruct")
+            input_texts = self.tokenizer.batch_decode(input_ids)
+            self.tokenizer.decode(input_ids[attention_mask==1])
         #
         #     for index in (stream_labels == 1).nonzero():
         #         idx_batch, idx_token = index;
@@ -697,7 +697,7 @@ class Qwen2VLStreamV3(Qwen2VLStream):
             output_hidden_states=output_hidden_states,
             return_dict=return_dict,
         )
-        hidden_states = outputs[0]
+        # hidden_states = outputs[0]
 
         # print("DEBUG")
         # attention_mask0 = attention_mask.clone()

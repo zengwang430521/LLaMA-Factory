@@ -143,6 +143,7 @@ def run_sft(
         model.base_model.model.stream_head.lora_A.default.weight.fill_(0)
         model.base_model.model.stream_head.lora_B.default.weight.fill_(0)
         model.base_model.model.stream_head.weight.copy_(tensors['base_model.model.stream_head.weight'].to(model.device))
+    model = model.eval()
 
     if training_args.do_eval:
         metrics = trainer.evaluate(metric_key_prefix="eval", **gen_kwargs)

@@ -58,7 +58,7 @@ for subset in ['train', 'valid']:
             filtered_action = [action for action in item["action_localisation"] if action['label'] == activity]
 
             start_times, end_times, test_infos = [], [], []
-            # test_infos.append({"realtime": filtered_action[0]['timestamps'][1]*0.5*1e-6, "count": 0})
+            test_infos.append({"realtime": filtered_action[0]['timestamps'][1]*0.5*1e-6, "count": 0})
             for count, action in enumerate(filtered_action, start=1):
                 start_time, end_time = action['timestamps']
                 start_time, end_time = start_time * 1e-6, end_time * 1e-6
@@ -66,7 +66,7 @@ for subset in ['train', 'valid']:
                 start_times.append(start_time)
                 end_times.append(end_time)
                 test_infos.append({"realtime": end_time, "count": count})
-            # test_infos.append({"realtime": end_time + 1, "count": count})
+            test_infos.append({"realtime": end_time + 1, "count": count})
 
             test_data = {
                 "id": idx,
@@ -88,6 +88,10 @@ for subset in ['train', 'valid']:
             query_time = max(min(test_times) - 1, 0)
             query_time = min(max(start_times[0] - 1, 0), query_time)
             query = query_template.format(activity=activity.lower())
+
+            tar_data[-1]['ask_time'] = query_time
+            tar_data[-1]["test_info"] = tar_data[-1]["test_info"][1:-1]
+
             if query_time > 0:
                 messages.append({"role": "user", "content": "<video>", "time": [0.0, query_time]})
                 videos.append(video_path)
@@ -124,9 +128,9 @@ for subset in ['train', 'valid']:
                     json.dump(tar_data, f, ensure_ascii=False, indent=2)
                 print(len(tar_data))
 
-                os.makedirs(os.path.dirname(tar_file2), exist_ok=True)
-                with open(tar_file2, 'w', encoding='utf-8') as f:
-                    json.dump(tar_data2, f, ensure_ascii=False, indent=2)
-                print(len(tar_data2))
+                # os.makedirs(os.path.dirname(tar_file2), exist_ok=True)
+                # with open(tar_file2, 'w', encoding='utf-8') as f:
+                #     json.dump(tar_data2, f, ensure_ascii=False, indent=2)
+                # print(len(tar_data2))
 
                 sys.exit(0)
