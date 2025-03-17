@@ -1701,6 +1701,7 @@ class Qwen2vlStreamPluginV3(BasePlugin):
             sample_idxs = (sample_times * real_fps).round().astype(np.int32)
             sample_idxs = sample_idxs.clip(min=0, max=total_frames-1)
 
+            import pdb; pdb.set_trace()
             sample_frame_shapes = [(frame_width, frame_height)] * len(sample_idxs)
             sample_frame_shapes = _regularize_images_shape(sample_frame_shapes, image_resolution=getattr(processor, "video_resolution", 128 * 128))
 
