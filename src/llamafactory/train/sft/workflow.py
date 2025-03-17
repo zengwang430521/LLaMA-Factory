@@ -144,7 +144,8 @@ def run_sft(
         trainer.model.base_model.model.stream_head.lora_B.default.weight.fill_(0)
         trainer.model.base_model.model.stream_head.weight.copy_(tensors['base_model.model.stream_head.weight'].to(model.device))
     trainer.model = trainer.model.eval()
-    import pdb; pdb.set_trace()
+    trainer.model = trainer.model.merge_and_unload()
+    # import pdb; pdb.set_trace()
 
     if training_args.do_eval:
         metrics = trainer.evaluate(metric_key_prefix="eval", **gen_kwargs)
