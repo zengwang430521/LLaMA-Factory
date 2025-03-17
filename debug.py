@@ -1,18 +1,19 @@
-frame_nums = []
-for video, time_seg in zip(videos, video_time_segs):
-    video_info = video_infos[video]
-    real_fps = video_info["fps"]
-    video_duration = video_info["duration"]
-    total_frames = video_info['frame_num']
+import json
 
-    # 计算这一段需要采样多少帧
-    t_start, t_end = time_seg
-    seg_duration = t_end - t_start
-    frame_num = min(seg_duration * video_fps, seg_duration * real_fps)
-    frame_num = min(frame_num, max_total_frame_num * seg_duration / total_duration)
-    frame_num = math.floor(frame_num)
-    frame_num = max(frame_num, 2)  # 最少采集2帧
-    if frame_num % 2 != 0:
-        # 必须是偶数
-        frame_num -= 1
-    frame_nums.append(frame_num)
+
+def remove_first_last_testinfo(json_file):
+    with open(json_file, "r", encoding="utf-8") as f:
+        data = json.load(f)
+
+    for item in data:
+        if "test_info" in item and len(item["test_info"]) > 2:
+            item["test_info"] = item["test_info"][1:-1]  # 删除第一个和最后一个元素
+        elif "test_info" in item:
+            item["test_info"] = []  # 若不足3个元素，则清空
+
+    with open(json_file, "w", encoding="utf-8") as f:
+        json.dump(data, f, indent=2, ensure_ascii=False)
+
+    return data
+
+remove_first_last_testinfo("/home/SENSETIME/zengwang/myprojects/task_define_service/data/perception_test/processed/REC_trainval_ovo_test.json")

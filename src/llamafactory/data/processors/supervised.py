@@ -851,6 +851,7 @@ def preprocess_supervised_dataset(
                 print(f'Skip broken data!!!:{examples["_videos"][i]}.')
                 continue
 
+            import pdb; pdb.set_trace()
             model_inputs["input_ids"].append(input_ids)
             model_inputs["attention_mask"].append(masks)
             model_inputs["labels"].append(labels)

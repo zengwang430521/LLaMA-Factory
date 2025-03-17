@@ -58,7 +58,7 @@ for subset in ['train', 'valid']:
             filtered_action = [action for action in item["action_localisation"] if action['label'] == activity]
 
             start_times, end_times, test_infos = [], [], []
-            test_infos.append({"realtime": filtered_action[0]['timestamps'][1]*0.5*1e-6, "count": 0})
+            # test_infos.append({"realtime": filtered_action[0]['timestamps'][1]*0.5*1e-6, "count": 0})
             for count, action in enumerate(filtered_action, start=1):
                 start_time, end_time = action['timestamps']
                 start_time, end_time = start_time * 1e-6, end_time * 1e-6
@@ -66,7 +66,7 @@ for subset in ['train', 'valid']:
                 start_times.append(start_time)
                 end_times.append(end_time)
                 test_infos.append({"realtime": end_time, "count": count})
-            test_infos.append({"realtime": end_time + 1, "count": count})
+            # test_infos.append({"realtime": end_time + 1, "count": count})
 
             test_data = {
                 "id": idx,
