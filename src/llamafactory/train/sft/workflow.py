@@ -107,9 +107,9 @@ def run_sft(
     gen_kwargs["pad_token_id"] = tokenizer.pad_token_id
     gen_kwargs["logits_processor"] = get_logits_processor()
 
-    # Training
-    import pdb; pdb.set_trace()
-    print('Debug: Train')
+    # # Training
+    # import pdb; pdb.set_trace()
+    # print('Debug: Train')
 
     if training_args.do_train:
         train_result = trainer.train(resume_from_checkpoint=training_args.resume_from_checkpoint)
@@ -128,9 +128,9 @@ def run_sft(
     if training_args.predict_with_generate:
         tokenizer.padding_side = "left"  # use left-padding in generation
 
-    # Evaluation
-    import pdb; pdb.set_trace()
-    print('Debug: Eval')
+    # # Evaluation
+    # import pdb; pdb.set_trace()
+    # print('Debug: Eval')
     # 强行加载stream_head_weight
     from safetensors.torch import load_file
     import os

@@ -165,6 +165,7 @@ class MultiModalDataCollatorForSeq2Seq(DataCollatorForSeq2Seq):
 
                 batch_stream_labels.append(feature.pop("stream_labels", None))
 
+            import pdb; pdb.set_trace()
             mm_inputs = self.template.mm_plugin.get_mm_inputs(
                 batch_images, batch_videos, batch_imglens, batch_vidlens, batch_input_ids, self.processor, batch_frame_idxs
             )
