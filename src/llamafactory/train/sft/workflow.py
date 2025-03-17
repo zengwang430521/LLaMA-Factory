@@ -106,6 +106,9 @@ def run_sft(
     gen_kwargs["logits_processor"] = get_logits_processor()
 
     # Training
+    import pdb; pdb.set_trace()
+    print('Debug: Train')
+
     if training_args.do_train:
         train_result = trainer.train(resume_from_checkpoint=training_args.resume_from_checkpoint)
         trainer.save_model()
@@ -124,6 +127,9 @@ def run_sft(
         tokenizer.padding_side = "left"  # use left-padding in generation
 
     # Evaluation
+    import pdb; pdb.set_trace()
+    print('Debug: Eval')
+
     if training_args.do_eval:
         metrics = trainer.evaluate(metric_key_prefix="eval", **gen_kwargs)
         if training_args.predict_with_generate:  # eval_loss will be wrong if predict_with_generate is enabled
