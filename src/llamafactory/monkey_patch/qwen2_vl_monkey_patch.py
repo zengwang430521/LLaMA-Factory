@@ -1,7 +1,18 @@
 import torch
-from transformers.models.qwen2_vl.modeling_qwen2_vl import *
-from transformers.models.qwen2_vl.modeling_qwen2_vl import Qwen2VLConfig
-from transformers.models import *
+# from transformers.models.qwen2_vl.modeling_qwen2_vl import *
+from transformers.models.qwen2_vl.modeling_qwen2_vl import (
+    Qwen2VLConfig,
+    ModelOutput,
+    Qwen2VLForConditionalGeneration,
+    QWEN2_VL_INPUTS_DOCSTRING,
+    add_start_docstrings_to_model_forward,
+    replace_return_docstrings,
+    Qwen2VLCausalLMOutputWithPast,
+    CrossEntropyLoss
+)
+import torch.nn.functional as F
+from dataclasses import dataclass
+# from transformers.models import *
 import torch.nn as nn
 from typing import Any, Dict, List, Optional, Tuple, Union
 from transformers.models.auto import AutoModelForVision2Seq, AutoConfig
