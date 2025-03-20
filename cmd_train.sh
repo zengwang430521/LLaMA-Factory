@@ -37,15 +37,17 @@ torchrun $DISTRIBUTED_ARGS src/train.py \
 --finetuning_type lora \
 --lora_rank 8 \
 --additional_target stream_head,lm_head \
---video_resolution 65536 \
+--video_resolution 100352 \
 --video_fps 2 \
 --video_maxlen 64 \
---cutoff_len 4096 \
+--cutoff_len 8192 \
 --num_train_epochs 1 \
 --save_steps 1000 \
 --stream_head_dim 2 \
 --stream_loss_factor 2 \
---output_dir work_dirs/stream_v4_lora_20 \
+--enable_liger_kernel \
+--use_unsloth_gc \
+--output_dir work_dirs/debug \
 --dataset \
 MMDuetIT_dvc_stream_v4_10k,\
 MMDuetIT_magqa_stream_v4_10k,\

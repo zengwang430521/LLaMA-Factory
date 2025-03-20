@@ -1,5 +1,6 @@
 import torch
 from transformers.models.qwen2_vl.modeling_qwen2_vl import *
+from transformers.models.qwen2_vl.modeling_qwen2_vl import Qwen2VLConfig
 from transformers.models import *
 import torch.nn as nn
 from typing import Any, Dict, List, Optional, Tuple, Union
