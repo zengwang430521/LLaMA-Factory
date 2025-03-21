@@ -635,10 +635,15 @@ def _encode_supervised_stream_example_v4(
 
             input_ids += encode_elements
             labels += [IGNORE_INDEX] * len(encode_elements)
-            stream_labels += tmp_stream_labels
+            if mask_history and i < len(messages) - 3:
+                # mask_history 时，只计算最后 3 条 message 的 stream label
+                # 1. 最后3条 message 为 <Assistant> <User> <Assistant>
+                # 2. 最后3条 message 为 <User> <User> <Assistant>，可以训练模型不要马上回答。
+                stream_labels += [IGNORE_INDEX] * len(encode_elements)
+            else:
+                stream_labels += tmp_stream_labels
             masks += mask
             reserved_message_num += 1
-
         elif message["role"] == Role.ASSISTANT.value:
             # 现在的写法非常死板，如果elements中本身有内容，表示是特殊情况,需要额外处理
             assert len(elements) == 0

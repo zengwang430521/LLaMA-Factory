@@ -75,7 +75,6 @@ for subset in ['train', 'valid']:
             for count, action in enumerate(filtered_action, start=1):
                 answer = str(count)
                 # response_time = action['timestamps'][1] * 1e-6
-
                 '''
                 response_period: 表示可以进行回复的区间 [t1, t2, t3, t4]
                 0:  不回复
