@@ -872,7 +872,8 @@ def preprocess_supervised_dataset(
             model_inputs["frame_idxs"].append(frame_idxs[:num_video])
             model_inputs["frame_times"].append(frame_times[:num_video])
             model_inputs["video_grid_thw"].append(video_grid_thw[:num_video_grid])
-
+            if i >= 100:
+                break
         else:
             if len(examples["_prompt"][i]) % 2 != 1 or len(examples["_response"][i]) != 1:
                 logger.warning_rank0(
