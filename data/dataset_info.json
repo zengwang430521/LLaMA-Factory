@@ -598,6 +598,20 @@
       "assistant_tag": "assistant"
     }
   },
+  "REC_perception_test_stream_only": {
+    "file_name": "processed/perception_test/REC_trainval_stream_only.json",
+    "formatting": "sharegpt_stream",
+    "columns": {
+      "messages": "messages",
+      "videos": "videos"
+    },
+    "tags": {
+      "role_tag": "role",
+      "content_tag": "content",
+      "user_tag": "user",
+      "assistant_tag": "assistant"
+    }
+  },
 
 
 
