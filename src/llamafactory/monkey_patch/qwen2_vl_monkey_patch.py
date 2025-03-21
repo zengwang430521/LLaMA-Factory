@@ -601,8 +601,8 @@ class Qwen2VLStreamV3(Qwen2VLStream):
         Returns:
         """
 
-        import pdb; pdb.set_trace()
-        print('Debug: 模型forward')
+        # import pdb; pdb.set_trace()
+        # print('Debug: 模型forward')
 
 
         # if not hasattr(self, "tokenizer"):
@@ -620,7 +620,7 @@ class Qwen2VLStreamV3(Qwen2VLStream):
         #         print(self.tokenizer.decode(input_ids[idx_batch, idx_begin:idx_token]) +
         #               '\n@\n' + self.tokenizer.decode(input_ids[idx_batch, idx_token]) + f'  {stream_labels[idx_batch, idx_token]}' + '\n@\n' +
         #               self.tokenizer.decode(input_ids[idx_batch, idx_token+1:idx_end]))
-        #
+
         #         # print(self.tokenizer.decode(input_ids[idx_batch, idx_begin:idx_token]))
         #         # print(self.tokenizer.decode(input_ids[idx_batch, idx_token:idx_end]))
         #         # (stream_labels == 0).nonzero()
