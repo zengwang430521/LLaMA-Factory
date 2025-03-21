@@ -713,6 +713,9 @@ def preprocess_supervised_dataset(
     model_inputs = defaultdict(list)
     # print('debug')
     for i in range(len(examples["_prompt"])):
+        if i >= 100:
+            break
+
         if data_args.template == 'qwen2_vl_stream':
             # qwen2_vl_stream 对话数据不进行验证, 并且需要额外的stream_labels
             input_ids, labels, stream_labels, video_time_segs = _encode_supervised_stream_example(
@@ -872,8 +875,6 @@ def preprocess_supervised_dataset(
             model_inputs["frame_idxs"].append(frame_idxs[:num_video])
             model_inputs["frame_times"].append(frame_times[:num_video])
             model_inputs["video_grid_thw"].append(video_grid_thw[:num_video_grid])
-            if i >= 100:
-                break
         else:
             if len(examples["_prompt"][i]) % 2 != 1 or len(examples["_response"][i]) != 1:
                 logger.warning_rank0(
