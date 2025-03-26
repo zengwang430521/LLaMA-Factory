@@ -601,30 +601,30 @@ class Qwen2VLStreamV3(Qwen2VLStream):
         Returns:
         """
 
-        import pdb; pdb.set_trace()
-        print('Debug: 模型forward')
+        # import pdb; pdb.set_trace()
+        # print('Debug: 模型forward')
 
 
-        # if not hasattr(self, "tokenizer"):
-        #     from transformers.models.auto import AutoTokenizer
-        #     self.tokenizer = AutoTokenizer.from_pretrained("/afs/zengwang/ckpt/Stream-Qwen2-VL-7B-Instruct")
-        #     input_texts = self.tokenizer.batch_decode(input_ids)
-        #     self.tokenizer.decode(input_ids[attention_mask==1])
-        #
-        #     for index in (input_ids == 151645).nonzero():
-        #         idx_batch, idx_token = index;
-        #         print('-'* 50);
-        #         print(index);
-        #         idx_end = min(idx_token+20, input_ids.shape[1]-1);
-        #         idx_begin = max(idx_token-20, 0);
-        #         print(self.tokenizer.decode(input_ids[idx_batch, idx_begin:idx_token]) +
-        #               '\n@\n' + self.tokenizer.decode(input_ids[idx_batch, idx_token]) + f'  {stream_labels[idx_batch, idx_token]}' + '\n@\n' +
-        #               self.tokenizer.decode(input_ids[idx_batch, idx_token+1:idx_end]))
+        if not hasattr(self, "tokenizer"):
+            from transformers.models.auto import AutoTokenizer
+            self.tokenizer = AutoTokenizer.from_pretrained("/afs/zengwang/ckpt/Stream-Qwen2-VL-7B-Instruct")
+            input_texts = self.tokenizer.batch_decode(input_ids)
+            self.tokenizer.decode(input_ids[attention_mask==1])
 
-        #         # print(self.tokenizer.decode(input_ids[idx_batch, idx_begin:idx_token]))
-        #         # print(self.tokenizer.decode(input_ids[idx_batch, idx_token:idx_end]))
-        #         # (stream_labels == 0).nonzero()
-        #         # self.tokenizer.batch_decode(input_ids[stream_labels!=-100])
+            for index in (input_ids == 151645).nonzero():
+                idx_batch, idx_token = index;
+                print('-'* 50);
+                print(index);
+                idx_end = min(idx_token+20, input_ids.shape[1]-1);
+                idx_begin = max(idx_token-20, 0);
+                print(self.tokenizer.decode(input_ids[idx_batch, idx_begin:idx_token]) +
+                      '\n@\n' + self.tokenizer.decode(input_ids[idx_batch, idx_token]) + f'  {stream_labels[idx_batch, idx_token]}' + '\n@\n' +
+                      self.tokenizer.decode(input_ids[idx_batch, idx_token+1:idx_end]))
+
+                # print(self.tokenizer.decode(input_ids[idx_batch, idx_begin:idx_token]))
+                # print(self.tokenizer.decode(input_ids[idx_batch, idx_token:idx_end]))
+                # (stream_labels == 0).nonzero()
+                # self.tokenizer.batch_decode(input_ids[stream_labels!=-100])
 
         output_attentions = output_attentions if output_attentions is not None else self.config.output_attentions
         output_hidden_states = (
@@ -749,7 +749,7 @@ class Qwen2VLStreamV3(Qwen2VLStream):
 
         loss = None
         # if labels is not None and logits.requires_grad:
-        if labels is not None:
+        if labels is not None and self.llm_loss_factor > 0:
             # Upcast to float if we need to compute the loss to avoid potential precision issues
             logits = logits.float()
             # Shift so that tokens < n predict n
@@ -805,7 +805,6 @@ class Qwen2VLStreamV3(Qwen2VLStream):
                 loss += stream_loss * self.stream_loss_factor
             else:
                 loss = stream_loss * self.stream_loss_factor
-
 
         if not return_dict:
             output = (logits,) + outputs[1:]
