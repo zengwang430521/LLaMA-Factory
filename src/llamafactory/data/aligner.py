@@ -75,7 +75,7 @@ def _convert_videos(
             if isinstance(videos[i], str) and os.path.isfile(os.path.join(data_args.image_dir, videos[i])):
                 videos[i] = os.path.join(data_args.image_dir, videos[i])
 
-            if isinstance(videos[i], 'dict'):
+            if isinstance(videos[i], dict):
                 if 'file' in videos[i].keys():
                     video_file = videos[i]['file']
                     if isinstance(video_file, str) and os.path.isfile(os.path.join(data_args.image_dir, video_file)):
