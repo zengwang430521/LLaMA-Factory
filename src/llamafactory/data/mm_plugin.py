@@ -2013,8 +2013,8 @@ class Qwen2vlStreamPluginV5(Qwen2vlStreamPluginV3):
         videos: Sequence["VideoInput"],
         processor: Optional["ProcessorMixin"],
     ) -> List[Dict[str, str]]:
-        # import pdb; pdb.set_trace()
-        # print("DebugV5: process_messages")
+        import pdb; pdb.set_trace()
+        print("DebugV5: process_messages")
 
         self._validate_input(images, videos)
         image_processor: "BaseImageProcessor" = getattr(processor, "image_processor")

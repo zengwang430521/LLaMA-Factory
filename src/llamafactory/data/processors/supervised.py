@@ -709,8 +709,8 @@ def _encode_supervised_stream_example_v5(
     # 所以视频中每帧后都需要加上<|vision_end|><|im_end|>
     # 需要mask掉额外新加的token
 
-    # import pdb; pdb.set_trace()
-    # print('Debug V5: 产生input_ids, labels, stream_labels')
+    import pdb; pdb.set_trace()
+    print('Debug V5: 产生input_ids, labels, stream_labels')
 
     # import pdb; pdb.set_trace()
     messages, frame_idxs, frame_times, video_grid_thw = template.mm_plugin.process_messages(prompt + response, images, videos, processor)
