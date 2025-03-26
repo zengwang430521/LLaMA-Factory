@@ -294,8 +294,8 @@ def convert_sharegpt_stream(
              "content": message[dataset_attr.content_tag],
              # "time": message.get('time', None)}
              "time": time,
-             "valid": message.get('valid', True),
-             "ignore_end_stream": message.get('ignore_end_stream', False),
+             "valid": message.get('valid', None),
+             "ignore_end_stream": message.get("ignore_end_stream", None),
              }
         )
 
