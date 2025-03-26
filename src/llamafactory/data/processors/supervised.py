@@ -689,6 +689,179 @@ def _encode_supervised_stream_example_v4(
     return input_ids, labels, stream_labels, frame_idxs, frame_times, video_grid_thw, masks,reserved_message_num
 
 
+'''修改代码，实现更负责的监督'''
+def _encode_supervised_stream_example_v5(
+    prompt: Sequence[Dict[str, str]],
+    response: Sequence[Dict[str, str]],
+    system: Optional[str],
+    tools: Optional[str],
+    images: Sequence["ImageInput"],
+    videos: Sequence["VideoInput"],
+    template: "Template",
+    tokenizer: "PreTrainedTokenizer",
+    processor: Optional["ProcessorMixin"],
+    cutoff_len: int,
+    train_on_prompt: bool,
+    mask_history: bool,
+) -> Tuple[List[int], List[int]]:
+    # <video> <text> <video> 交错的版本
+    # stream labels 应该在<|im_end|>上计算。
+    # 所以视频中每帧后都需要加上<|vision_end|><|im_end|>
+    # 需要mask掉额外新加的token
+
+    # import pdb; pdb.set_trace()
+    # print('Debug V5: 产生input_ids, labels, stream_labels')
+
+    # import pdb; pdb.set_trace()
+    messages, frame_idxs, frame_times, video_grid_thw = template.mm_plugin.process_messages(prompt + response, images, videos, processor)
+    input_ids, labels = template.mm_plugin.process_token_ids([], [], images, videos, tokenizer, processor)
+    masks = [1] * len(input_ids)
+
+    # TODO: format 应该放在别的地方，先暂时放在这里了
+    # TODO: 暂时采用粗暴的后截断，和LLAMA_FACTORY默认的截断方式不一致
+    # import pdb; pdb.set_trace()
+    # print('Debug: 产生input_ids, labels, stream_labels')
+    assert not template.efficient_eos
+
+    system = system or template.default_system
+
+    # 用于stream_head回复时机的训练，
+    frame_pad_id = tokenizer.encode(FRAME_PAD_TOKEN)[0]    # pad的需要mask的token
+    judge_id = tokenizer.encode('<|im_end|>')[0]           # stream 判别点
+    do_response_id = tokenizer.encode(DO_RESPONSE_TOKEN)[0]
+    no_response_id = tokenizer.encode(NO_RESPONSE_TOKEN)[0]
+    null_response_id = tokenizer.encode(NULL_RESPONSE_TOKEN)[0]
+
+    stream_labels = [IGNORE_INDEX] * len(labels)
+
+    reserved_message_num = 0
+    for i, message in enumerate(messages):
+        total_len = len(input_ids)
+
+        '''超出长度就不要了'''
+        if total_len >= cutoff_len:
+            break
+
+        elements = []
+        if i == 0:
+            elements += template.format_prefix.apply()
+            if system or tools:
+                tool_text = template.format_tools.apply(content=tools)[0] if tools else ""
+                elements += template.format_system.apply(content=(system + tool_text))
+
+        elements_mask = deepcopy(elements)
+        elements_stream = deepcopy(elements)
+
+        if message["role"] in [Role.USER.value, Role.OBSERVATION.value]:
+            if message["role"] == Role.USER.value:
+                elements += template.format_user.apply(content=message["content"], idx=str(i // 2))
+                elements_mask += template.format_user.apply(content=message["content_mask"], idx=str(i // 2))
+                elements_stream += template.format_user.apply(content=message["content_stream"], idx=str(i // 2))
+
+            elif message["role"] == Role.OBSERVATION.value:
+                elements += template.format_observation.apply(content=message["content"])
+                elements_mask += template.format_observation.apply(content=message["content_mask"])
+                elements_stream += template.format_observation.apply(content=message["content_stream"])
+
+            # 实际的输入
+            encode_elements = template._convert_elements_to_ids(tokenizer, elements)
+
+            # attention mask
+            encode_elements_mask = template._convert_elements_to_ids(tokenizer, elements_mask)
+            mask = [0 if t == frame_pad_id else 1 for t in encode_elements_mask]
+
+            # 用于训练回复时机
+            encode_elements_stream = template._convert_elements_to_ids(tokenizer, elements_stream)
+            tmp_stream_labels = []
+            for t in encode_elements_stream:
+                if t == do_response_id:
+                    tmp_stream_labels.append(1)
+                elif t == no_response_id:
+                    tmp_stream_labels.append(0)
+                else:
+                    tmp_stream_labels.append(IGNORE_INDEX)
+
+            if not message.get("ignore_end_stream", False):
+                # 最后一个判定点, 用 encode_elements 找
+                need_response = False
+                if i + 1 < len(messages):
+                    next_message = messages[i + 1]
+                    need_response = (next_message["role"] == Role.ASSISTANT.value)
+
+                for idx, token_idx in enumerate(encode_elements):
+                    if token_idx == judge_id:
+                        judge_spot = idx
+                tmp_stream_labels[judge_spot] = 1 if need_response else 0
+
+            cur_len = len(encode_elements)
+            if total_len + cur_len > cutoff_len:
+                '''
+                加上之后会超出长度。
+                因为可能有视频存在，把<|video_pad|>截断的话，get_rope_index会出问题,
+                所以不能直接做截断, 干脆放弃这轮对话
+                '''
+                break
+
+            input_ids += encode_elements
+            labels += [IGNORE_INDEX] * len(encode_elements)
+            if mask_history and i < len(messages) - 3:
+                # mask_history 时，只计算最后 3 条 message 的 stream label
+                # 1. 最后3条 message 为 <Assistant> <User> <Assistant>
+                # 2. 最后3条 message 为 <User> <User> <Assistant>，可以训练模型不要马上回答。
+                stream_labels += [IGNORE_INDEX] * len(encode_elements)
+            else:
+                stream_labels += tmp_stream_labels
+            masks += mask
+            reserved_message_num += 1
+        elif message["role"] == Role.ASSISTANT.value:
+            # 现在的写法非常死板，如果elements中本身有内容，表示是特殊情况,需要额外处理
+            assert len(elements) == 0
+            elements += template.format_assistant.apply(content=message["content"])
+            prefix = elements[:1]
+            content = elements[1:]
+            encoded_prefix = template._convert_elements_to_ids(tokenizer, prefix)
+            encoded_content = template._convert_elements_to_ids(tokenizer, content)
+            encode_elements = encoded_prefix + encoded_content
+            if mask_history and i < len(messages) - 1:
+                encode_labels = [IGNORE_INDEX] * len(encoded_prefix + encoded_content)
+            elif not message.get('valid', True):
+                # 有时候会有 fake response
+                encode_labels = [IGNORE_INDEX] * len(encoded_prefix + encoded_content)
+            else:
+                encode_labels = [IGNORE_INDEX] * len(encoded_prefix) + encoded_content
+
+            cur_len = len(encode_elements)
+            if total_len + cur_len >= cutoff_len:
+                encode_elements = encode_elements[:cutoff_len-total_len]
+                encode_labels = encode_labels[:cutoff_len-total_len]
+
+
+            input_ids += encode_elements
+            labels += encode_labels
+            # assistant 部分没有视频，不用训练stream_head
+            stream_labels += [IGNORE_INDEX] * len(encode_elements)
+            masks += [1] * len(encode_elements)
+            reserved_message_num += 1
+
+        elif message["role"] == Role.FUNCTION.value:
+            raise NotImplementedError("Not implemented role:{}".format(message["role"]))
+        else:
+            raise NotImplementedError("Unexpected role: {}".format(message["role"]))
+
+
+    assert len(input_ids) == len(labels) and len(input_ids) == len(stream_labels)
+
+    '''把<|video_pad|>截断的话， get_rope_index会出问题'''
+    # if len(input_ids) > cutoff_len:
+    #     # import pdb; pdb.set_trace()
+    #     input_ids = input_ids[:cutoff_len]
+    #     labels = labels[:cutoff_len]
+    #     stream_labels = stream_labels[:cutoff_len]
+    #     masks = masks[:cutoff_len]
+
+    return input_ids, labels, stream_labels, frame_idxs, frame_times, video_grid_thw, masks,reserved_message_num
+
+
 
 def get_image_video_grid_num(messages):
     num_image, num_video, num_video_grid = 0, 0, 0
@@ -837,7 +1010,6 @@ def preprocess_supervised_dataset(
             model_inputs["frame_times"].append(frame_times[:num_video])
             model_inputs["video_grid_thw"].append(video_grid_thw[:num_video_grid])
 
-
         elif data_args.template == 'qwen2_vl_stream_v4':
             # qwen2_vl_stream 对话数据不进行验证, 并且需要额外的stream_labels
             # 数据集中少量视频文件有问题，放弃这些数据
@@ -881,6 +1053,51 @@ def preprocess_supervised_dataset(
             model_inputs["frame_idxs"].append(frame_idxs[:num_video])
             model_inputs["frame_times"].append(frame_times[:num_video])
             model_inputs["video_grid_thw"].append(video_grid_thw[:num_video_grid])
+
+        elif data_args.template == 'qwen2_vl_stream_v5':
+            # qwen2_vl_stream 对话数据不进行验证, 并且需要额外的stream_labels
+            # 数据集中少量视频文件有问题，放弃这些数据
+            try:
+                input_ids, labels, stream_labels, frame_idxs, frame_times, video_grid_thw, masks, reserved_message_num = _encode_supervised_stream_example_v5(
+                    prompt=examples["_prompt"][i],
+                    response=examples["_response"][i],
+                    system=examples["_system"][i],
+                    tools=examples["_tools"][i],
+                    images=examples["_images"][i] or [],
+                    videos=examples["_videos"][i] or [],
+                    template=template,
+                    tokenizer=tokenizer,
+                    processor=processor,
+                    cutoff_len=data_args.cutoff_len,
+                    train_on_prompt=data_args.train_on_prompt,
+                    mask_history=data_args.mask_history,
+                )
+            except:
+                print(f'Skip broken data!!!:{examples["_videos"][i]}.')
+                continue
+
+            model_inputs["input_ids"].append(input_ids)
+            model_inputs["attention_mask"].append(masks)
+            model_inputs["labels"].append(labels)
+            model_inputs["stream_labels"].append(stream_labels)
+
+            messages = examples["_prompt"][i] + examples["_response"][i]
+            num_image, num_video, num_video_grid = get_image_video_grid_num(messages[:reserved_message_num])
+
+            images = examples["_images"][i]
+            if images is not None:
+                images = images[:num_image]
+            model_inputs["images"].append(images)
+
+            videos = examples["_videos"][i]
+            if videos is not None:
+                videos = videos[:num_video]
+            model_inputs["videos"].append(videos)
+
+            model_inputs["frame_idxs"].append(frame_idxs[:num_video])
+            model_inputs["frame_times"].append(frame_times[:num_video])
+            model_inputs["video_grid_thw"].append(video_grid_thw[:num_video_grid])
+
         else:
             if len(examples["_prompt"][i]) % 2 != 1 or len(examples["_response"][i]) != 1:
                 logger.warning_rank0(

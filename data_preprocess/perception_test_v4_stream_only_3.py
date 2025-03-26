@@ -1,25 +1,34 @@
 """
-[......视频a......] Query [......视频b......] [......目标片段1......][......视频c......][......目标片段2......] [...视频d...] Answer1
------------------- -----n nnnnnnnnnnnnnnnnnn  ----------------------- YYYYYYYYYYYYYYYYY YYYYYYYYYYYYYYYYYYYYYYY YYYYYYYYYYYYY -------
+视频： [......视频a......] [......视频b......][......目标片段1......][......视频c......][......目标片段2......][...视频d...]
+文字：                   Q                           Answer1                                 Answer2
 
-[......视频a......] Query [......视频b....] [......目标片段1......] Answer1 [......视频c......][......目标片段2......][...视频d...] Answer2
-----------------------------------------------------------------------------nnnnnnnnnnnnnnnnnnn ---------------------- YYYYYYYYYYYYY -------
+data:
+[......视频a......] Query [......视频b......][......目标片段1......][......视频c......][......目标片段2......][...视频d...] Answer1
+------------------------n nnnnnnnnnnnnnnnnn ----------------YYYYY YYYY-----nnnnnnnnn -----------------YYYY YYYYnnnnnnn -------
 
-部分数据：
-Query [......目标片段1......][......目标片段2......] Answer1
------n ---------------------- YYYYYYYYYYYYYYYYYYYYYY ----------
+[......视频a......] Query [......视频b......][......目标片段1 Answer1 ......][......视频c......][......目标片段2......][...视频d...] Answer2
+------------------------- ----------------- ----------------------- nnnnnn nnnnnnnnnnnnnnnnnn -----------------YYYY YYYY---nnnn -------
 
-Query  [......目标片段1......] Answer1 [......目标片段2......][...视频d...] Answer2
--------------------------------------------------------------- YYYYYYYYYYY -------
+[......视频a......] Query [......视频b......][......目标片段1 Answer1 ......][......视频c......][......目标片段2 Answer2......][...视频d...] Fake Answer
+------------------------ ------------------ ----------------------- ------ ------------------ ----------------------nnnnnnn nnnnnnnnnnnn -----------
 
+
+response_period: 表示可以进行回复的区间 [t1, t2, t3, t4]
+n:  不回复
+Y:  回复
+-:  不监督
+......t1 ...... t2 ...... t3 ......t4.......
+nnnnnn----------YYYYYYYYYYYY---------nnnnnnn
 """
+
+import copy
 import json
+
+import numpy as np
 from tqdm import tqdm
 import random
 import math
 import os
-import numpy as np
-import copy
 
 
 def get_frame_label(messages, video_duration, real_fps, mask_history=True):
@@ -152,10 +161,12 @@ for item in test_data:
             test_videos.add(os.path.basename(video).split('.mp4')[0])
 
 
-tar_file = f'/home/SENSETIME/zengwang/myprojects/task_define_service/data/perception_test/processed/REC_trainval.json'
+
+tar_file = f'/home/SENSETIME/zengwang/myprojects/task_define_service/data/perception_test/processed/REC_trainval_stream_only_3.json'
 tar_data = []
 
 label_count = {0: 0, 1: 0, -100: 0}
+
 for subset in ['train', 'valid']:
     src_file = f'/home/SENSETIME/zengwang/myprojects/task_define_service/data/perception_test/all_{subset}.json'
 
@@ -184,8 +195,8 @@ for subset in ['train', 'valid']:
             # 只利用出现了多次的动作生成计数数据
             if action_counts[activity] < 2:
                 continue
-            filtered_action = [action for action in item["action_localisation"] if action['label'] == activity]
 
+            filtered_action = [action for action in item["action_localisation"] if action['label'] == activity]
             query = query_template.format(activity=activity.lower())
             first_response_time = filtered_action[0]['timestamps'][0] * 1e-6
 
@@ -203,7 +214,6 @@ for subset in ['train', 'valid']:
             for count, action in enumerate(filtered_action, start=1):
                 answer = str(count)
                 # response_time = action['timestamps'][1] * 1e-6
-
                 '''
                 response_period: 表示可以进行回复的区间 [t1, t2, t3, t4]
                 0:  不回复
@@ -213,25 +223,82 @@ for subset in ['train', 'valid']:
                 000000----------111111111111---------0000000
                 '''
                 t_start, t_end = action['timestamps'][0] * 1e-6, action['timestamps'][1] * 1e-6
-                delta = t_end - t_start
-                response_period = [t_start + 0.4 * delta, t_start + 0.6 * delta, t_end, t_end + 1]
-                response_time = t_end  # 为了充分训练，插入response的位置要尽量靠后一些
+
+                """
+                这一轮的监督数据, 把回答放在最后，只监督stream label
+                stream label: 动作前: 0, 动作中: --, 动作后: 1
+                """
+                response_period = [t_start, t_end, video_duration, video_duration+1]
+                response_time = video_duration
+
+                messages.append({"role": "user", "content": "<video>", "time": [last_time, response_time]})
+                videos.append(video_path)
+
+                # if t_start > last_time:
+                #     messages.append({"role": "user", "content": "<video><+><>", "time": [last_time, t_start, t_start, response_time]})
+                #     videos.append(video_path)
+                #     videos.append(video_path)
+                # else:
+                #     messages.append({"role": "user", "content": "<video>", "time": [last_time, response_time]})
+                #     videos.append(video_path)
+
+                messages.append({"role": "assistant", "content": answer, "time": response_period})
+
+                # 这里必须deepcopy，因为后续需要修改messages
+                tar_item = {"messages": copy.deepcopy(messages), "videos": copy.deepcopy(videos)}
+                tar_data.append(tar_item)
+
+                frame_times, frame_labels = get_frame_label(copy.deepcopy(messages), video_duration, real_fps, mask_history=True)
+                for frame_label in frame_labels:
+                    for l in frame_label:
+                        label_count[l] += 1
+                t = 0
+
+                """
+                先删除之前加入的特殊数据
+                然后把这一轮的回复插在正常但靠前的位置（前25%的位置)，便于后一轮的监督
+                同时让这一轮的 stream label 都是 无监督-
+                """
+                messages = messages[:-2]
+                videos = videos[:-1]
+
+                response_period = [0, video_duration, video_duration+1, video_duration+2]
+                response_time = t_start + 0.25 * (t_end - t_start)
+                # response_time = t_end
 
                 messages.append({"role": "user", "content": "<video>", "time": [last_time, response_time]})
                 videos.append(video_path)
                 messages.append({"role": "assistant", "content": answer, "time": response_period})
+
                 last_time = response_time
 
-            tar_item = {"messages": messages, "videos": videos}
-            tar_data.append(tar_item)
+            if last_time < video_duration:
+                # 用来训练全部完成回复之后要保持沉默
+                # fake answer 绝对不能用来训练lm_head
+                '''
+                response_period: 表示可以进行回复的区间 [t1, t2, t3, t4]
+                0:  不回复
+                1:  回复
+                -:  不监督
+                ......t1 ...... t2 ...... t3 ......t4.......
+                000000----------111111111111---------0000000
+                '''
+                response_period = [video_duration+1, video_duration+2, video_duration+3, video_duration+4]
+                fake_answer = 'None'
+                messages.append({"role": "user", "content": "<video>", "time": [last_time, video_duration]})
+                videos.append(video_path)
+                messages.append({"role": "assistant", "content": fake_answer, "time": response_period})
 
-            frame_times, frame_labels = get_frame_label(copy.deepcopy(messages), video_duration, real_fps,
-                                                        mask_history=False)
-            for frame_label in frame_labels:
-                for l in frame_label:
-                    label_count[l] += 1
+                # 这里必须deepcopy，因为后续需要修改messages
+                tar_item = {"messages": copy.deepcopy(messages), "videos": copy.deepcopy(videos)}
+                tar_data.append(tar_item)
+                frame_times, frame_labels = get_frame_label(copy.deepcopy(messages), video_duration, real_fps, mask_history=True)
+                for frame_label in frame_labels:
+                    for l in frame_label:
+                        label_count[l] += 1
 
 print(label_count)
+
 # os.makedirs(os.path.dirname(tar_file), exist_ok=True)
 # with open(tar_file, 'w', encoding='utf-8') as f:
 #     json.dump(tar_data, f, ensure_ascii=False, indent=2)

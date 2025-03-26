@@ -24,7 +24,7 @@ from transformers import DataCollatorForSeq2Seq
 
 from ..extras.constants import IGNORE_INDEX, IMAGE_PLACEHOLDER
 from ..extras.packages import is_pillow_available
-from .mm_plugin import Qwen2vlStreamPlugin, Qwen2vlStreamPluginV2, Qwen2vlStreamPluginV3
+from .mm_plugin import Qwen2vlStreamPlugin, Qwen2vlStreamPluginV2, Qwen2vlStreamPluginV3, Qwen2vlStreamPluginV4, Qwen2vlStreamPluginV5
 
 if is_pillow_available():
     from PIL import Image

@@ -1,3 +1,14 @@
+"""
+Query [......目标片段1......][......目标片段2......] Answer1
+-----n -------------------- YYYYYYYYYYYYYYYYYYYYYY ----------
+
+Query  [video][......目标片段1 Answer1 ......] [......目标片段2......][...视频d...] Answer2
+-------nnnnnnn------------------------ nnnnnnn ------------------------ YYYYYYYYYYY -------
+
+Query  [......目标片段1 Answer1 ......] [......目标片段2 Answer2......][...视频d...]
+--------------------------------------------------------------- nnnnnnn nnnnnnnnnnnn
+"""
+
 import copy
 import json
 
@@ -276,7 +287,7 @@ for subset in ['train', 'valid']:
 
 print(label_count)
 
-os.makedirs(os.path.dirname(tar_file), exist_ok=True)
-with open(tar_file, 'w', encoding='utf-8') as f:
-    json.dump(tar_data, f, ensure_ascii=False, indent=2)
-print(len(tar_data))
+# os.makedirs(os.path.dirname(tar_file), exist_ok=True)
+# with open(tar_file, 'w', encoding='utf-8') as f:
+#     json.dump(tar_data, f, ensure_ascii=False, indent=2)
+# print(len(tar_data))
