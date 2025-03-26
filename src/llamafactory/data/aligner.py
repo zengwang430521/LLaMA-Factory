@@ -293,7 +293,10 @@ def convert_sharegpt_stream(
             {"role": tag_mapping[message[dataset_attr.role_tag]],
              "content": message[dataset_attr.content_tag],
              # "time": message.get('time', None)}
-             "time": time}
+             "time": time,
+             "valid": message.get('valid', True),
+             "ignore_end_stream": message.get('ignore_end_stream', False),
+             }
         )
 
     if dataset_attr.kto_tag and isinstance(example[dataset_attr.kto_tag], bool):  # kto example
