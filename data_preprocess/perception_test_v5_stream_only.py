@@ -12,13 +12,6 @@ data:
 [......视频a......] Query [......视频b......][......目标片段1 Answer1 ......][......视频c......][......目标片段2 Answer2......][...视频d...] Fake Answer
 ------------------------ ------------------ ----------------------- ------ ------------------ ----------------------nnnnnnn nnnnnnnnnnnn -----------
 
-
-response_period: 表示可以进行回复的区间 [t1, t2, t3, t4]
-n:  不回复
-Y:  回复
--:  不监督
-......t1 ...... t2 ...... t3 ......t4.......
-nnnnnn----------YYYYYYYYYYYY---------nnnnnnn
 """
 
 import copy
@@ -32,31 +25,18 @@ import os
 
 
 def get_frame_label(messages, video_duration, real_fps, mask_history=True):
-    video_time_segs = []
-    response_periods = []
+    video_files = [v['file'] for v in videos]
+    video_time_segs = [v['time'] for v in videos]
     valids = []
+
     for idx, message in enumerate(messages):
-        content = message["content"]
-        if '<video>' in content:
-            time = message['time']
-
-            for i in range(0, len(time), 2):
-                video_time_segs.append([time[i], time[i + 1]])
-                response_periods.append(None)
-
-                if mask_history and idx < len(messages) - 3:
-                    valids.append(False)
-                else:
-                    valids.append(True)
-
-            if idx + 1 < len(messages):
-                next_role = messages[idx + 1]["role"]
-                next_time = messages[idx + 1]["time"]
-                if next_role == 'assistant':
-                    response_periods[-1] = next_time
-
-
-
+        content = copy.deepcopy(message["content"])
+        while '<video>' in content:
+            if mask_history and idx < len(messages) - 3:
+                valids.append(False)
+            else:
+                valids.append(True)
+            content = content.replace("<video>", "", 1)
 
     # 先处理一下time_seg
     total_duration = 0
@@ -111,31 +91,24 @@ def get_frame_label(messages, video_duration, real_fps, mask_history=True):
 
     # 判断哪些帧需要回答
     frame_labels = []
-    for sample_time, response_period, valid in zip(frame_times, response_periods, valids):
-        if not valid:
-            frame_label = [-100] * len(sample_time)
-        elif response_period is None:
-            frame_label = [0] * len(sample_time)
-        else:
-            '''
-            response_period: 表示可以进行回复的区间 [t1, t2, t3, t4]
-            0:  不回复
-            1:  回复
-            -:  不监督
-            ......t1 ...... t2 ...... t3 ......t4.......
-            000000----------111111111111---------0000000
-            实际上，目前起作用的只有t1, t2，因为视频不会太长
-            '''
+    for sample_time, video, valid in zip(frame_times, videos, valids):
+        frame_label = [-100] * len(sample_time)
+        if valid:
+            # positive 用闭区间
+            positive_time = video.get('positive_time', None)
+            if positive_time is not None:
+                for t_start, t_end in positive_time:
+                    for i, t in enumerate(sample_time):
+                        if t_start <= t <= t_end:
+                            frame_label[i] = 1
 
-            t1, t2, t3, t4 = response_period
-            frame_label = []
-            for t in sample_time:
-                if t < t1 or t4 < t:
-                    frame_label.append(0)  # 不回复
-                elif t2 <= t and t <= t3:
-                    frame_label.append(1)  # 回复
-                else:
-                    frame_label.append(-100)  # 不监督
+            # negative 用开区间
+            negative_time = video.get('negative_time', None)
+            if negative_time is not None:
+                for t_start, t_end in negative_time:
+                    for i, t in enumerate(sample_time):
+                        if t_start < t < t_end:
+                            frame_label[i] = 0
         frame_labels.append(frame_label)
 
     return frame_times, frame_labels
@@ -162,7 +135,7 @@ for item in test_data:
 
 
 
-tar_file = f'/home/SENSETIME/zengwang/myprojects/task_define_service/data/perception_test/processed/REC_trainval_stream_only_3.json'
+tar_file = f'/home/SENSETIME/zengwang/myprojects/task_define_service/data/perception_test/processed/REC_trainval_stream_only_v5.json'
 tar_data = []
 
 label_count = {0: 0, 1: 0, -100: 0}
@@ -182,6 +155,7 @@ for subset in ['train', 'valid']:
         item = src_data[video]
         video_duration = (item['metadata']['num_frames'] - 1) / item['metadata']['frame_rate']
         real_fps = item['metadata']['frame_rate']
+        frame_interval = 1.0 / real_fps
 
         action_counts = {}
         for action in item["action_localisation"]:
@@ -197,57 +171,85 @@ for subset in ['train', 'valid']:
                 continue
 
             filtered_action = [action for action in item["action_localisation"] if action['label'] == activity]
-            query = query_template.format(activity=activity.lower())
-            first_response_time = filtered_action[0]['timestamps'][0] * 1e-6
+            filtered_action_times = [[action['timestamps'][0] * 1e-6, action['timestamps'][1] * 1e-6] for action in filtered_action]
 
-            max_query_time = math.floor(first_response_time - 1)
+            query = query_template.format(activity=activity.lower())
+            first_response_time = filtered_action_times[0][0]
+
+            max_query_time = math.floor(first_response_time - 3)
             max_query_time = max(max_query_time, 0)
             query_time = float(random.randint(0, int(max_query_time)))
 
             messages, videos = [], []
             if query_time > 0:
-                messages.append({"role": "user", "content": "<video>", "time": [0.0, query_time]})
-                videos.append(video_path)
-            messages.append({"role": "user", "content": query, "time": [query_time, query_time]})
+                messages.append({"role": "user", "content": "<video>", 'ignore_end_stream': True})
+                videos.append({"file": video_path, "time": [0, query_time]})
+            messages.append({"role": "user", "content": query})
+
+            # DEBUG 用
+            if len(filtered_action_times) >= 3:
+                t = 0
 
             last_time = query_time
-            for count, action in enumerate(filtered_action, start=1):
+            for idx in range(len(filtered_action_times)):
+                count = idx + 1
                 answer = str(count)
-                # response_time = action['timestamps'][1] * 1e-6
-                '''
-                response_period: 表示可以进行回复的区间 [t1, t2, t3, t4]
-                0:  不回复
-                1:  回复
-                -:  不监督
-                ......t1 ...... t2 ...... t3 ......t4.......
-                000000----------111111111111---------0000000
-                '''
-                t_start, t_end = action['timestamps'][0] * 1e-6, action['timestamps'][1] * 1e-6
 
-                """
-                这一轮的监督数据, 把回答放在最后，只监督stream label
-                stream label: 动作前: 0, 动作中: --, 动作后: 1
-                """
-                response_period = [t_start, t_end, video_duration, video_duration+1]
-                response_time = video_duration
+                # 遍历之后的时间和action, 设置 positive_time, negative_time
+                # positive_time 是闭区间， negative_time 是开区间
+                positive_time, negative_time = [], []
 
-                messages.append({"role": "user", "content": "<video>", "time": [last_time, response_time]})
-                videos.append(video_path)
+                # negative_time 是开区间，所以设置的时候略微提前一点, 确保覆盖第一帧
+                cur_time = last_time - frame_interval
 
-                # if t_start > last_time:
-                #     messages.append({"role": "user", "content": "<video><+><>", "time": [last_time, t_start, t_start, response_time]})
-                #     videos.append(video_path)
-                #     videos.append(video_path)
-                # else:
-                #     messages.append({"role": "user", "content": "<video>", "time": [last_time, response_time]})
-                #     videos.append(video_path)
+                for tmp_idx in range(idx, len(filtered_action_times)):
+                    tmp_start, tmp_end = filtered_action_times[tmp_idx]
+                    if tmp_idx < len(filtered_action_times) - 1:
+                        next_start, _ = filtered_action_times[tmp_idx + 1]
+                    else:
+                        next_start = video_duration
 
-                messages.append({"role": "assistant", "content": answer, "time": response_period})
+                    # 无关视频不回复, 因为是闭区间，所以不要包含 tmp_start
+                    if cur_time < tmp_start:
+                        negative_time.append([cur_time, tmp_start])
+
+                    # action 靠前部分不监督
+
+                    # action 靠后部分可以回复
+                    positive_time.append([tmp_start + 0.7 * (tmp_end-tmp_start), tmp_end])
+
+                    # action 结束后一小段时间可以回复, 但是不要超过下一段action
+                    extra_end = min(tmp_end + 2, next_start)
+                    if extra_end > tmp_end:
+                        positive_time.append([tmp_end, extra_end])
+
+                    # extra_end 之后一段时间不要监督
+                    extra_ignore = min(extra_end + 2, next_start)
+
+                    cur_time = extra_ignore
+
+                # 没有action了，直到视频结束都不回复
+                # negative_time 是开区间，所以设置的时候略微靠后一点，确保覆盖最后1帧
+                if cur_time < video_duration:
+                    negative_time.append([cur_time, video_duration + frame_interval])
+
+                act_start, act_end = filtered_action_times[idx]
+
+                video_info = {
+                    "file": video_path,
+                    "time": [last_time, video_duration],
+                    "positive_time": positive_time,
+                    "negative_time": negative_time
+                }
+                messages.append({"role": "user", "content": "<video>", 'ignore_end_stream': True})
+                videos.append(video_info)
+                messages.append({"role": "assistant", "content": answer})
 
                 # 这里必须deepcopy，因为后续需要修改messages
                 tar_item = {"messages": copy.deepcopy(messages), "videos": copy.deepcopy(videos)}
                 tar_data.append(tar_item)
 
+                # 统计一下 stream_label
                 frame_times, frame_labels = get_frame_label(copy.deepcopy(messages), video_duration, real_fps, mask_history=True)
                 for frame_label in frame_labels:
                     for l in frame_label:
@@ -261,45 +263,46 @@ for subset in ['train', 'valid']:
                 """
                 messages = messages[:-2]
                 videos = videos[:-1]
+                response_time = act_start + 0.3 * (act_end - act_start)
 
-                response_period = [0, video_duration, video_duration+1, video_duration+2]
-                response_time = t_start + 0.25 * (t_end - t_start)
-                # response_time = t_end
-
-                messages.append({"role": "user", "content": "<video>", "time": [last_time, response_time]})
-                videos.append(video_path)
-                messages.append({"role": "assistant", "content": answer, "time": response_period})
+                video_info = {
+                    "file": video_path,
+                    "time": [last_time, response_time],
+                }
+                messages.append({"role": "user", "content": "<video>", 'ignore_end_stream': True})
+                videos.append(video_info)
+                messages.append({"role": "assistant", "content": answer})
 
                 last_time = response_time
 
+
             if last_time < video_duration:
                 # 用来训练全部完成回复之后要保持沉默
-                # fake answer 绝对不能用来训练lm_head
-                '''
-                response_period: 表示可以进行回复的区间 [t1, t2, t3, t4]
-                0:  不回复
-                1:  回复
-                -:  不监督
-                ......t1 ...... t2 ...... t3 ......t4.......
-                000000----------111111111111---------0000000
-                '''
-                response_period = [video_duration+1, video_duration+2, video_duration+3, video_duration+4]
-                fake_answer = 'None'
-                messages.append({"role": "user", "content": "<video>", "time": [last_time, video_duration]})
-                videos.append(video_path)
-                messages.append({"role": "assistant", "content": fake_answer, "time": response_period})
+                # fake answer 不能用来训练lm_head
 
-                # 这里必须deepcopy，因为后续需要修改messages
+                video_info = {
+                    "file": video_path,
+                    "time": [last_time, video_duration],
+                    "positive_time": [],
+                    "negative_time": [[last_time-frame_interval, video_duration+frame_interval]]
+                }
+                messages.append({"role": "user", "content": "<video>", 'ignore_end_stream': True})
+                videos.append(video_info)
+                messages.append({"role": "assistant", "content": '', "valid": False})
+
                 tar_item = {"messages": copy.deepcopy(messages), "videos": copy.deepcopy(videos)}
                 tar_data.append(tar_item)
                 frame_times, frame_labels = get_frame_label(copy.deepcopy(messages), video_duration, real_fps, mask_history=True)
                 for frame_label in frame_labels:
                     for l in frame_label:
                         label_count[l] += 1
+                t = 0
 
 print(label_count)
 
-# os.makedirs(os.path.dirname(tar_file), exist_ok=True)
-# with open(tar_file, 'w', encoding='utf-8') as f:
-#     json.dump(tar_data, f, ensure_ascii=False, indent=2)
-# print(len(tar_data))
+os.makedirs(os.path.dirname(tar_file), exist_ok=True)
+with open(tar_file, 'w', encoding='utf-8') as f:
+    json.dump(tar_data, f, ensure_ascii=False, indent=2)
+print(len(tar_data))
+
+# {0: 356058, 1: 183793, -100: 629980}

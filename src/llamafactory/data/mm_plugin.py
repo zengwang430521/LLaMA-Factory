@@ -2041,6 +2041,7 @@ class Qwen2vlStreamPluginV5(Qwen2vlStreamPluginV3):
             # 先都设置为-100
             frame_label = [-100] * len(sample_time)
 
+            # positive 用闭区间
             positive_time = video.get('positive_time', None)
             if positive_time is not None:
                 for t_start, t_end in positive_time:
@@ -2048,11 +2049,12 @@ class Qwen2vlStreamPluginV5(Qwen2vlStreamPluginV3):
                         if t_start <= t <= t_end:
                             frame_label[i] = 1
 
+            # negative 用开区间
             negative_time = video.get('negative_time', None)
             if negative_time is not None:
                 for t_start, t_end in negative_time:
                     for i, t in enumerate(sample_time):
-                        if t_start <= t <= t_end:
+                        if t_start < t < t_end:
                             frame_label[i] = 0
 
             frame_labels.append(frame_label)
