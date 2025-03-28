@@ -134,10 +134,13 @@ for item in test_data:
             test_videos.add(os.path.basename(video).split('.mp4')[0])
 
 
+# ignore_single_action = True
+# tar_file = f'/home/SENSETIME/zengwang/myprojects/task_define_service/data/perception_test/processed/REC_trainval_stream_only_v5.json'
 
-tar_file = f'/home/SENSETIME/zengwang/myprojects/task_define_service/data/perception_test/processed/REC_trainval_stream_only_v5.json'
+ignore_single_action = False
+tar_file = f'/home/SENSETIME/zengwang/myprojects/task_define_service/data/perception_test/processed/REC_trainval_stream_only_v5_2.json'
+
 tar_data = []
-
 label_count = {0: 0, 1: 0, -100: 0}
 
 for subset in ['train', 'valid']:
@@ -167,7 +170,7 @@ for subset in ['train', 'valid']:
 
         for activity in action_counts.keys():
             # 只利用出现了多次的动作生成计数数据
-            if action_counts[activity] < 2:
+            if ignore_single_action and action_counts[activity] < 2:
                 continue
 
             filtered_action = [action for action in item["action_localisation"] if action['label'] == activity]
@@ -299,10 +302,12 @@ for subset in ['train', 'valid']:
                 t = 0
 
 print(label_count)
+print(len(tar_data))
 
 os.makedirs(os.path.dirname(tar_file), exist_ok=True)
 with open(tar_file, 'w', encoding='utf-8') as f:
     json.dump(tar_data, f, ensure_ascii=False, indent=2)
-print(len(tar_data))
 
-# {0: 356058, 1: 183793, -100: 629980}
+
+# 多次： {0: 356058, 1: 183793, -100: 629980} 50887
+# 多次+单次： {0: 656031, 1: 215901, -100: 829581} 73091

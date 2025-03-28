@@ -659,7 +659,20 @@
     }
   },
 
-
+  "REC_perception_test_stream_only_v5_2": {
+    "file_name": "processed/perception_test/REC_trainval_stream_only_v5_2.json",
+    "formatting": "sharegpt_stream",
+    "columns": {
+      "messages": "messages",
+      "videos": "videos"
+    },
+    "tags": {
+      "role_tag": "role",
+      "content_tag": "content",
+      "user_tag": "user",
+      "assistant_tag": "assistant"
+    }
+  },
 
 
 
