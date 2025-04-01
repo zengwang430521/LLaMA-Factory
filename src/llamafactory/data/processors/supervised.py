@@ -891,9 +891,9 @@ def preprocess_supervised_dataset(
     model_inputs = defaultdict(list)
     # print('debug')
     for i in range(len(examples["_prompt"])):
-        # if i >= 50:
-        #     print("Debug!")
-        #     break
+        if i >= 1000:
+            print("Debug!")
+            break
 
         if data_args.template == 'qwen2_vl_stream':
             # qwen2_vl_stream 对话数据不进行验证, 并且需要额外的stream_labels
