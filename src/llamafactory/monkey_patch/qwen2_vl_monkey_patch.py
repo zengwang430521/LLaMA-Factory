@@ -601,8 +601,8 @@ class Qwen2VLStreamV3(Qwen2VLStream):
         Returns:
         """
 
-        import pdb; pdb.set_trace()
-        print('Debug: 模型forward')
+        # import pdb; pdb.set_trace()
+        # print('Debug: 模型forward')
 
 
         # if not hasattr(self, "tokenizer"):
@@ -818,8 +818,8 @@ class Qwen2VLStreamV3(Qwen2VLStream):
 
         return Qwen2VLStreamOutput(
             loss=loss,
-            llm_loss=llm_loss,
-            stream_loss=stream_loss,
+            # llm_loss=llm_loss,
+            # stream_loss=stream_loss,
             logits=logits,
             stream_logits=stream_logits,
             past_key_values=outputs.past_key_values,
