@@ -811,6 +811,9 @@ class Qwen2VLStreamV3(Qwen2VLStream):
         else:
             stream_loss = None
 
+        # import pdb; pdb.set_trace()
+        # print('Debug: 模型Loss')
+        # print(loss)
 
         if not return_dict:
             output = (logits,) + outputs[1:]

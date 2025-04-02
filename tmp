@@ -50,3 +50,14 @@ tensor([[-0.0162, -0.0306,  0.0081,  ...,  0.0304, -0.0118, -0.0223],
 
 {0: 71670, 1: 461587, -100: 387559}
 
+
+
+tensor(4.7894, device='cuda:0', grad_fn=<MulBackward0>)
+tensor(4.7396, device='cuda:0', grad_fn=<MulBackward0>)
+tensor(13.7238, device='cuda:0', grad_fn=<MulBackward0>)
+tensor(11.4286, device='cuda:0', grad_fn=<MulBackward0>)
+tensor(1.3346, device='cuda:0', grad_fn=<MulBackward0>)
+tensor(33.5312, device='cuda:0', grad_fn=<MulBackward0>)
+tensor(0.0006, device='cuda:0', grad_fn=<MulBackward0>)
+tensor(11.4922, device='cuda:0', grad_fn=<MulBackward0>)
+{'loss': 81.04, 'grad_norm': 443.9035339355469, 'learning_rate': 4.5833333333333334e-05, 'epoch': 0.08}
