@@ -719,7 +719,35 @@
     }
   },
 
+  "REC_perception_test_stream_only_v5_6": {
+    "file_name": "processed/perception_test/REC_trainval_stream_only_v5_6.json",
+    "formatting": "sharegpt_stream",
+    "columns": {
+      "messages": "messages",
+      "videos": "videos"
+    },
+    "tags": {
+      "role_tag": "role",
+      "content_tag": "content",
+      "user_tag": "user",
+      "assistant_tag": "assistant"
+    }
+  },
 
+    "REC_perception_test_stream_only_v5_7": {
+    "file_name": "processed/perception_test/REC_trainval_stream_only_v5_7.json",
+    "formatting": "sharegpt_stream",
+    "columns": {
+      "messages": "messages",
+      "videos": "videos"
+    },
+    "tags": {
+      "role_tag": "role",
+      "content_tag": "content",
+      "user_tag": "user",
+      "assistant_tag": "assistant"
+    }
+  },
 
   "alpaca_en": {
     "hf_hub_url": "llamafactory/alpaca_en",
