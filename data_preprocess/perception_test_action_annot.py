@@ -1,6 +1,10 @@
 """
 打标action的描述
 """
+from call_llm import call_qwen2vl, _read_video_decord_v2
+import qwen_vl_utils
+qwen_vl_utils.vision_process.VIDEO_READER_BACKENDS['decord'] = _read_video_decord_v2
+
 import copy
 import json
 
@@ -11,14 +15,22 @@ random.seed(42)
 import math
 import os
 from typing import List
-from call_llm import call_qwen2vl
 
 
-src_dir = '/home/SENSETIME/zengwang/myprojects/task_define_service/data/perception_test/'
-video_dir = 'perception_test/videos/'
-temp_dir = '/home/SENSETIME/zengwang/myprojects/task_define_service/data/perception_test/action_desc'
-tar_file = '/home/SENSETIME/zengwang/myprojects/task_define_service/data/perception_test/total_action_desc.json'
+
+# src_dir = '/home/SENSETIME/zengwang/myprojects/task_define_service/data/perception_test/'
+# video_dir = 'perception_test/videos/'
+# temp_dir = '/home/SENSETIME/zengwang/myprojects/task_define_service/data/perception_test/action_desc'
+# tar_file = '/home/SENSETIME/zengwang/myprojects/task_define_service/data/perception_test/total_action_desc.json'
+# tar_dict = {}
+
+
+src_dir = '/afs/zengwang/projects/task_define_service/data/perception_test'
+video_dir = '/afs/zengwang/projects/task_define_service/data/perception_test/videos/'
+temp_dir = '/afs/zengwang/projects/task_define_service/data/perception_test/action_desc'
+tar_file = '/afs/zengwang/projects/task_define_service/data/perception_test/total_action_desc.json'
 tar_dict = {}
+
 
 for subset in ['train', 'valid']:
     src_file = os.path.join(src_dir, f'all_{subset}.json')
@@ -60,7 +72,7 @@ for subset in ['train', 'valid']:
 
                 act_start, act_end = action['timestamps']
                 act_start, act_end = act_start * 1e-6, act_end * 1e-6
-                act_frames = int(math.floor((act_start - act_end) * real_fps))
+                act_frames = int(math.floor((act_end - act_start) * real_fps))
 
                 video_info = {
                     "type": "video",
@@ -73,14 +85,13 @@ for subset in ['train', 'valid']:
                     "nframes": min(64, act_frames // 2 * 2)
                 }
 
-                messages = [
-                    {'role': 'user', 'content': [{'type': 'text', 'text': prompt}, video_info]}]
+                messages = [{'role': 'user', 'content': [{'type': 'text', 'text': prompt}, video_info]}]
+                import pdb; pdb.set_trace()
                 response = call_qwen2vl(messages, "Qwen2.5-VL-72B-Instruct")
                 print(f'{action_type}: {objects}')
                 print(response)
                 with open(output_file, 'w',encoding='utf-8') as f:
                     f.write(response)
-
 
             tar_dict[f'{video}_{act_id}'] = response
 
