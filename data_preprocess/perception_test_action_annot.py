@@ -86,7 +86,7 @@ for subset in ['train', 'valid']:
                 }
 
                 messages = [{'role': 'user', 'content': [{'type': 'text', 'text': prompt}, video_info]}]
-                import pdb; pdb.set_trace()
+                # import pdb; pdb.set_trace()
                 response = call_qwen2vl(messages, "Qwen2.5-VL-72B-Instruct")
                 print(f'{action_type}: {objects}')
                 print(response)
