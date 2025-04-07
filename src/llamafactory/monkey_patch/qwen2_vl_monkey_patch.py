@@ -749,7 +749,7 @@ class Qwen2VLStreamV3(Qwen2VLStream):
 
         loss = None
         # if labels is not None and logits.requires_grad:
-        if labels is not None and (labels != -100).sum() > 0 :
+        if labels is not None and (labels != -100).sum() > 0:
             # Upcast to float if we need to compute the loss to avoid potential precision issues
             logits = logits.float()
             # Shift so that tokens < n predict n
@@ -770,7 +770,7 @@ class Qwen2VLStreamV3(Qwen2VLStream):
         # stream head
         hidden_states = hidden_states.to(self.stream_head.weight.dtype)
         stream_logits = self.stream_head(hidden_states)
-        if stream_labels is not None:
+        if stream_labels is not None and (stream_labels != -100).sum() > 0:
             # stream label 不需要做shift
             # Upcast to float if we need to compute the loss to avoid potential precision issues
             stream_logits = stream_logits.float()

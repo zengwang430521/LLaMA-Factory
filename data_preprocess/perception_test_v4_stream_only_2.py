@@ -8,13 +8,13 @@ Query  [video][......目标片段1 Answer1 ......] [......目标片段2......][.
 Query  [......目标片段1 Answer1 ......] [......目标片段2 Answer2......][...视频d...]
 --------------------------------------------------------------- nnnnnnn nnnnnnnnnnnn
 """
-
+import random
+random.seed(42)
 import copy
 import json
 
 import numpy as np
 from tqdm import tqdm
-import random
 import math
 import os
 
@@ -180,6 +180,9 @@ for subset in ['train', 'valid']:
                 action_counts[action_type] = 1
 
         for activity in action_counts.keys():
+            if activity.lower() == 'other':
+                continue
+
             # 只利用出现了多次的动作生成计数数据
             if action_counts[activity] < 2:
                 continue

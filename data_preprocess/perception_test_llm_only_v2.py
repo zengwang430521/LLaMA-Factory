@@ -1,17 +1,6 @@
 """
-视频： [......视频a......] [......视频b......][......目标片段1......][......视频c......][......目标片段2......][...视频d...]
-文字：                   Q                           Answer1                                 Answer2
-
-data:
-[......视频a......] Query [......视频b......][......目标片段1......][......视频c......][......目标片段2......][...视频d...] Answer1
-------------------------n nnnnnnnnnnnnnnnnn ----------------YYYYY YYYY-----nnnnnnnnn -----------------YYYY YYYY----nnn -------
-
-[......视频a......] Query [......视频b......][......目标片段1 Answer1 ......][......视频c......][......目标片段2......][...视频d...] Answer2
-------------------------- ----------------- ----------------------- nnnnnn nnnnnnnnnnnnnnnnnn -----------------YYYY YYYY---nnnn -------
-
-[......视频a......] Query [......视频b......][......目标片段1 Answer1 ......][......视频c......][......目标片段2 Answer2......][...视频d...] Fake Answer
------------------------- ------------------ ----------------------- ------ ------------------ ----------------------nnnnnnn nnnnnnnnnnnn -----------
-
+只用来训练LLM head
+回复数字 + 具体在干的事
 """
 
 import copy
@@ -23,9 +12,47 @@ import random
 random.seed(42)
 import math
 import os
+from typing import List
 
 
-def get_frame_label(messages, video_duration, real_fps, mask_history=True):
+def clear_time_segs(
+    time_segs: List[List[int]],
+    global_seg: List[int],
+    merge: bool = False
+) -> List[List[int]]:
+    if time_segs is None:
+        return time_segs
+    if len(time_segs) == 0:
+        return []
+
+    time_segs = copy.deepcopy(time_segs)
+    global_seg = copy.deepcopy(global_seg)
+
+    global_start, global_end = global_seg
+
+    # 过滤：只剔除完全不相交的段
+    filtered = [
+        [start, end] for start, end in time_segs
+        if not (end < global_start or start > global_end)
+    ]
+
+    if not merge or not filtered:
+        return sorted(filtered)
+
+    # 合并相交或相连的时间段
+    filtered.sort(key=lambda x: x[0])
+    merged = [filtered[0]]
+    for current in filtered[1:]:
+        last = merged[-1]
+        if current[0] <= last[1]:  # 相交或相连
+            last[1] = max(last[1], current[1])  # 合并
+        else:
+            merged.append(current)
+
+    return merged
+
+
+def get_frame_label(messages, videos, video_duration, real_fps, mask_history=True):
     video_files = [v['file'] for v in videos]
     video_time_segs = [v['time'] for v in videos]
     valids = []
@@ -39,6 +66,7 @@ def get_frame_label(messages, video_duration, real_fps, mask_history=True):
                 valids.append(True)
             content = content.replace("<video>", "", 1)
 
+    assert len(valids) == len(video_time_segs)
     # 先处理一下time_seg
     total_duration = 0
     for i in range(len(video_time_segs)):
@@ -119,8 +147,8 @@ query_template = """
 In the video, the man/woman is {activity} repetitively. 
 Your task is to count how many times he/she has completed the action of {activity}.
 Remind me every time when he/she finishes one.
-Provide your answer as a single number (e.g., 0, 1, 2, 3…) indicating the total count.
-Do not include any additional text or explanation in your response.
+First provide a single number (e.g., 0, 1, 2, 3…) indicating the total count.
+Then describe the action.
 """
 
 # 为了保证没有数据泄漏
@@ -135,14 +163,15 @@ for item in test_data:
             test_videos.add(os.path.basename(video).split('.mp4')[0])
 
 
-# ignore_single_action = True
-# tar_file = f'/home/SENSETIME/zengwang/myprojects/task_define_service/data/perception_test/processed/REC_trainval_stream_only_v5.json'
 
 ignore_single_action = False
-tar_file = f'/home/SENSETIME/zengwang/myprojects/task_define_service/data/perception_test/processed/REC_trainval_stream_only_v5_2.json'
+answer_insert_point = [0.7, 1.0]
+tar_file = f'/home/SENSETIME/zengwang/myprojects/task_define_service/data/perception_test/processed/REC_trainval_llm_only_v2.json'
+
 
 tar_data = []
 label_count = {0: 0, 1: 0, -100: 0}
+num_other = 0
 
 for subset in ['train', 'valid']:
     src_file = f'/home/SENSETIME/zengwang/myprojects/task_define_service/data/perception_test/all_{subset}.json'
@@ -171,8 +200,8 @@ for subset in ['train', 'valid']:
 
         for activity in action_counts.keys():
             if activity.lower() == 'other':
+                num_other += 1
                 continue
-
             # 只利用出现了多次的动作生成计数数据
             if ignore_single_action and action_counts[activity] < 2:
                 continue
@@ -193,84 +222,33 @@ for subset in ['train', 'valid']:
                 videos.append({"file": video_path, "time": [0, query_time]})
             messages.append({"role": "user", "content": query})
 
-            # DEBUG 用
-            if len(filtered_action_times) >= 3:
-                t = 0
-
             last_time = query_time
             for idx in range(len(filtered_action_times)):
                 count = idx + 1
-                answer = str(count)
-
-                # 遍历之后的时间和action, 设置 positive_time, negative_time
-                # positive_time 是闭区间， negative_time 是开区间
-                positive_time, negative_time = [], []
-
-                # negative_time 是开区间，所以设置的时候略微提前一点, 确保覆盖第一帧
-                cur_time = last_time - frame_interval
-
-                for tmp_idx in range(idx, len(filtered_action_times)):
-                    tmp_start, tmp_end = filtered_action_times[tmp_idx]
-                    if tmp_idx < len(filtered_action_times) - 1:
-                        next_start, _ = filtered_action_times[tmp_idx + 1]
-                    else:
-                        next_start = video_duration
-
-                    # 无关视频不回复, 因为是闭区间，所以不要包含 tmp_start
-                    if cur_time < tmp_start:
-                        negative_time.append([cur_time, tmp_start])
-
-                    # action 靠前部分不监督
-
-                    # action 靠后部分可以回复
-                    positive_time.append([tmp_start + 0.7 * (tmp_end-tmp_start), tmp_end])
-
-                    # action 结束后一小段时间可以回复, 但是不要超过下一段action
-                    extra_end = min(tmp_end + 2, next_start)
-                    if extra_end > tmp_end:
-                        positive_time.append([tmp_end, extra_end])
-
-                    # extra_end 之后一段时间不要监督
-                    extra_ignore = min(extra_end + 2, next_start)
-
-                    cur_time = extra_ignore
-
-                # 没有action了，直到视频结束都不回复
-                # negative_time 是开区间，所以设置的时候略微靠后一点，确保覆盖最后1帧
-                if cur_time < video_duration:
-                    negative_time.append([cur_time, video_duration + frame_interval])
-
                 act_start, act_end = filtered_action_times[idx]
 
-                video_info = {
-                    "file": video_path,
-                    "time": [last_time, video_duration],
-                    "positive_time": positive_time,
-                    "negative_time": negative_time
-                }
-                messages.append({"role": "user", "content": "<video>", 'ignore_end_stream': True})
-                videos.append(video_info)
-                messages.append({"role": "assistant", "content": answer})
+                action = filtered_action[idx]
+                objects = []
+                for id_obj in action['parent_objects']:
+                    objects.append(item['object_tracking'][id_obj]['label'])
 
-                # 这里必须deepcopy，因为后续需要修改messages
-                tar_item = {"messages": copy.deepcopy(messages), "videos": copy.deepcopy(videos)}
-                tar_data.append(tar_item)
+                act_desc = activity.lower()
+                something_num = act_desc.count('something')
 
-                # 统计一下 stream_label
-                frame_times, frame_labels = get_frame_label(copy.deepcopy(messages), video_duration, real_fps, mask_history=True)
-                for frame_label in frame_labels:
-                    for l in frame_label:
-                        label_count[l] += 1
-                t = 0
+                if something_num != len(objects):
+                    print(f'Mismatch: {activity} -- {objects}')
 
-                """
-                先删除之前加入的特殊数据
-                然后把这一轮的回复插在正常但靠前的位置（前25%的位置)，便于后一轮的监督
-                同时让这一轮的 stream label 都是 无监督-
-                """
-                messages = messages[:-2]
-                videos = videos[:-1]
-                response_time = act_start + 0.3 * (act_end - act_start)
+                for obj in objects:
+                    act_desc = act_desc.replace('something', obj, 1)
+
+                answer = f'{count}\nThe person is {act_desc}.'
+
+                if isinstance(answer_insert_point, list) or isinstance(answer_insert_point, tuple):
+                    insert_point = random.uniform(answer_insert_point[0], answer_insert_point[1])
+                else:
+                    insert_point = answer_insert_point
+
+                response_time = act_start + insert_point * (act_end - act_start)
 
                 video_info = {
                     "file": video_path,
@@ -279,38 +257,24 @@ for subset in ['train', 'valid']:
                 messages.append({"role": "user", "content": "<video>", 'ignore_end_stream': True})
                 videos.append(video_info)
                 messages.append({"role": "assistant", "content": answer})
-
                 last_time = response_time
 
+            tar_item = {"messages": messages, "videos": videos}
+            tar_data.append(tar_item)
 
-            if last_time < video_duration:
-                # 用来训练全部完成回复之后要保持沉默
-                # fake answer 不能用来训练lm_head
-
-                video_info = {
-                    "file": video_path,
-                    "time": [last_time, video_duration],
-                    "positive_time": [],
-                    "negative_time": [[last_time-frame_interval, video_duration+frame_interval]]
-                }
-                messages.append({"role": "user", "content": "<video>", 'ignore_end_stream': True})
-                videos.append(video_info)
-                messages.append({"role": "assistant", "content": '', "valid": False})
-
-                tar_item = {"messages": copy.deepcopy(messages), "videos": copy.deepcopy(videos)}
-                tar_data.append(tar_item)
-                frame_times, frame_labels = get_frame_label(copy.deepcopy(messages), video_duration, real_fps, mask_history=True)
-                for frame_label in frame_labels:
-                    for l in frame_label:
-                        label_count[l] += 1
-                t = 0
+            frame_times, frame_labels = get_frame_label(copy.deepcopy(messages), videos, video_duration, real_fps, mask_history=True)
+            for frame_label in frame_labels:
+                for l in frame_label:
+                    label_count[l] += 1
+            t = 0
 
 print(label_count)
 print(len(tar_data))
 
-os.makedirs(os.path.dirname(tar_file), exist_ok=True)
-with open(tar_file, 'w', encoding='utf-8') as f:
-    json.dump(tar_data, f, ensure_ascii=False, indent=2)
+# os.makedirs(os.path.dirname(tar_file), exist_ok=True)
+# with open(tar_file, 'w', encoding='utf-8') as f:
+#     json.dump(tar_data, f, ensure_ascii=False, indent=2)
 
 
-# {0: 769270, 1: 159970, -100: 761915} 73091
+# 多次 + 单次： {0: 0, 1: 0, -100: 325257}  22209
+

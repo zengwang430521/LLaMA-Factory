@@ -1,18 +1,6 @@
 """
-视频： [......视频a......] [......视频b......][......目标片段1......][......视频c......][......目标片段2......][...视频d...]
-文字：                   Q                           Answer1                                 Answer2
-
-data:
-[......视频a......] Query [......视频b......][......目标片段1......][......视频c......][......目标片段2......][...视频d...] Answer1
-------------------------n nnnnnnnnnnnnnnnnn ----------------YYYYY YYYY-----nnnnnnnnn -----------------YYYY YYYY----nnn -------
-
-[......视频a......] Query [......视频b......][......目标片段1 Answer1 ......][......视频c......][......目标片段2......][...视频d...] Answer2
-------------------------- ----------------- ----------------------- nnnnnn nnnnnnnnnnnnnnnnnn -----------------YYYY YYYY---nnnn -------
-
-[......视频a......] Query [......视频b......][......目标片段1 Answer1 ......][......视频c......][......目标片段2 Answer2......][...视频d...] Fake Answer
------------------------- ------------------ ----------------------- ------ ------------------ ----------------------nnnnnnn nnnnnnnnnnnn -----------
-
-视频分段，保证目标片段一定能被采样到
+只用来训练LLM head
+只回复数字
 """
 
 import copy
@@ -22,6 +10,7 @@ import numpy as np
 from tqdm import tqdm
 import random
 random.seed(42)
+
 import math
 import os
 from typing import List
@@ -175,20 +164,10 @@ for item in test_data:
             test_videos.add(os.path.basename(video).split('.mp4')[0])
 
 
-# ignore_single_action = False
-# answer_insert_point = 0.3
-# stream_positive_point = 0.7
-# action_extend_time = 2
-# action_bridge_time = 2
-# tar_file = f'/home/SENSETIME/zengwang/myprojects/task_define_service/data/perception_test/processed/REC_trainval_stream_only_v5_3.json'
-
 
 ignore_single_action = False
-answer_insert_point = [0.1, 0.5]
-stream_positive_point = 0.6
-action_extend_time = 0
-action_bridge_time = 1
-tar_file = f'/home/SENSETIME/zengwang/myprojects/task_define_service/data/perception_test/processed/REC_trainval_stream_only_v5_5.json'
+answer_insert_point = [0.7, 1.0]
+tar_file = f'/home/SENSETIME/zengwang/myprojects/task_define_service/data/perception_test/processed/REC_trainval_llm_only_v1.json'
 
 
 tar_data = []
@@ -243,123 +222,12 @@ for subset in ['train', 'valid']:
                 videos.append({"file": video_path, "time": [0, query_time]})
             messages.append({"role": "user", "content": query})
 
-            # DEBUG 用
-            if len(filtered_action_times) >= 3:
-                t = 0
-
             last_time = query_time
             for idx in range(len(filtered_action_times)):
                 count = idx + 1
                 answer = str(count)
-
-                # 遍历之后的时间和action, 设置 positive_time, negative_time
-                # positive_time 是闭区间， negative_time 是开区间
-                positive_time, negative_time = [], []
-
-                # negative_time 是开区间，所以设置的时候略微提前一点, 确保覆盖第一帧
-                cur_time = last_time - frame_interval
-
-                # 视频进行分段，保证目标片段一定能被采样到
-                video_infos = []
-                for tmp_idx in range(idx, len(filtered_action_times)):
-                    tmp_start, tmp_end = filtered_action_times[tmp_idx]
-                    if tmp_idx < len(filtered_action_times) - 1:
-                        next_start, _ = filtered_action_times[tmp_idx + 1]
-                    else:
-                        next_start = video_duration
-
-                    # 无关视频不回复, 因为是闭区间，所以不要包含 tmp_start
-                    if cur_time < tmp_start - frame_interval:
-                        negative_time.append([cur_time, tmp_start])
-
-                    # action 靠前部分不监督
-                    # action 靠后部分可以回复
-                    if isinstance(stream_positive_point, list) or isinstance(stream_positive_point, tuple):
-                        pos_point = random.uniform(stream_positive_point[0], stream_positive_point[1])
-                    else:
-                        pos_point = stream_positive_point
-                    positive_time.append([tmp_start + pos_point * (tmp_end-tmp_start), tmp_end])
-
-                    # action 结束后一小段时间可以回复, 但是不要超过下一段action
-                    extra_end = min(tmp_end + action_extend_time, next_start)
-                    if extra_end > tmp_end:
-                        positive_time.append([tmp_end, extra_end])
-
-                    # extra_end 之后一段时间不要监督
-                    extra_ignore = min(extra_end + action_bridge_time, next_start)
-
-                    cur_time = extra_ignore
-
-                # 没有action了，直到视频结束都不回复
-                # negative_time 是开区间，所以设置的时候略微靠后一点，确保覆盖最后1帧
-                if cur_time < video_duration:
-                    negative_time.append([cur_time, video_duration + frame_interval])
-
                 act_start, act_end = filtered_action_times[idx]
 
-                # video_info = {
-                #     "file": video_path,
-                #     "time": [last_time, video_duration],
-                #     "positive_time": positive_time,
-                #     "negative_time": negative_time
-                # }
-                # messages.append({"role": "user", "content": "<video>", 'ignore_end_stream': True})
-                # videos.append(video_info)
-                # messages.append({"role": "assistant", "content": answer})
-
-                # 视频进行分段，保证目标片段一定能被采样到
-                last_seg_time = last_time
-                video_infos = []
-                for tmp_idx in range(idx, len(filtered_action_times)):
-                    tmp_start, tmp_end = filtered_action_times[tmp_idx]
-                    if last_seg_time < tmp_start:
-                        video_infos.append({
-                            "file": video_path,
-                            "time": [last_seg_time, tmp_start],
-                            "positive_time": positive_time,
-                            "negative_time": negative_time
-                        })
-                    video_infos.append({
-                        "file": video_path,
-                        "time": [tmp_start, tmp_end],
-                        "positive_time": positive_time,
-                        "negative_time": negative_time
-                    })
-                    last_seg_time = tmp_end
-
-                if last_seg_time < video_duration - frame_interval:
-                    video_infos.append({
-                        "file": video_path,
-                        "time": [last_seg_time, video_duration],
-                        "positive_time": positive_time,
-                        "negative_time": negative_time
-                    })
-
-                for video_info in video_infos:
-                    video_info['positive_time'] = clear_time_segs(video_info['positive_time'], video_info['time'])
-                    video_info['negative_time'] = clear_time_segs(video_info['negative_time'], video_info['time'])
-
-                # 这里必须deepcopy，因为后续需要修改messages
-                content = '<+>'.join(['<video>'] * len(video_infos))
-                tar_messages = (copy.deepcopy(messages) +
-                                [{"role": "user", "content": content, 'ignore_end_stream': True}] +
-                                [{"role": "assistant", "content": answer}])
-                tar_videos = copy.deepcopy(videos) + video_infos
-                tar_item = {"messages": tar_messages, "videos": tar_videos}
-                tar_data.append(tar_item)
-
-                # 统计一下 stream_label
-                frame_times, frame_labels = get_frame_label(copy.deepcopy(tar_messages), copy.deepcopy(tar_videos), video_duration, real_fps, mask_history=True)
-                for frame_label in frame_labels:
-                    for l in frame_label:
-                        label_count[l] += 1
-                t = 0
-
-                """
-                先删除之前加入的特殊数据
-                然后把这一轮的回复插在正常但靠前的位置（前25%的位置)，便于后一轮的监督
-                同时让这一轮的 stream label 都是 无监督-
-                """
                 if isinstance(answer_insert_point, list) or isinstance(answer_insert_point, tuple):
                     insert_point = random.uniform(answer_insert_point[0], answer_insert_point[1])
                 else:
@@ -374,30 +242,16 @@ for subset in ['train', 'valid']:
                 messages.append({"role": "user", "content": "<video>", 'ignore_end_stream': True})
                 videos.append(video_info)
                 messages.append({"role": "assistant", "content": answer})
-
                 last_time = response_time
 
+            tar_item = {"messages": messages, "videos": videos}
+            tar_data.append(tar_item)
 
-            if last_time < video_duration:
-                # 用来训练全部完成回复之后要保持沉默
-                # fake answer 不能用来训练lm_head
-                video_info = {
-                    "file": video_path,
-                    "time": [last_time, video_duration],
-                    "positive_time": [],
-                    "negative_time": [[last_time-frame_interval, video_duration+frame_interval]]
-                }
-                messages.append({"role": "user", "content": "<video>", 'ignore_end_stream': True})
-                videos.append(video_info)
-                messages.append({"role": "assistant", "content": '', "valid": False})
-
-                tar_item = {"messages": copy.deepcopy(messages), "videos": copy.deepcopy(videos)}
-                tar_data.append(tar_item)
-                frame_times, frame_labels = get_frame_label(copy.deepcopy(messages), videos, video_duration, real_fps, mask_history=True)
-                for frame_label in frame_labels:
-                    for l in frame_label:
-                        label_count[l] += 1
-                t = 0
+            frame_times, frame_labels = get_frame_label(copy.deepcopy(messages), videos, video_duration, real_fps, mask_history=True)
+            for frame_label in frame_labels:
+                for l in frame_label:
+                    label_count[l] += 1
+            t = 0
 
 print(label_count)
 print(len(tar_data))
@@ -407,5 +261,5 @@ with open(tar_file, 'w', encoding='utf-8') as f:
     json.dump(tar_data, f, ensure_ascii=False, indent=2)
 
 
-# 多次 + 单次： {0: 621706, 1: 260655, -100: 808051} 73091
+# {0: 0, 1: 0, -100: 323737} 22090
 
