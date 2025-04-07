@@ -82,7 +82,7 @@ for subset in ['train', 'valid']:
                     "total_pixels": 2 * 24576 * 28 * 28,
                     "min_pixels": 16 * 28 * 2,
                     "max_pixles": 2 * 768 * 28 * 28,
-                    "nframes": min(64, act_frames // 2 * 2)
+                    "nframes": min(32, act_frames // 2 * 2)
                 }
 
                 messages = [{'role': 'user', 'content': [{'type': 'text', 'text': prompt}, video_info]}]
