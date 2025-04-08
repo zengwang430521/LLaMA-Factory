@@ -136,6 +136,7 @@ for item in test_data:
 
 
 
+# min_pos_duration = None
 # ignore_single_action = False
 # answer_insert_point = 0.3
 # stream_positive_point = 0.7
@@ -144,6 +145,7 @@ for item in test_data:
 # tar_file = f'/home/SENSETIME/zengwang/myprojects/task_define_service/data/perception_test/processed/REC_trainval_stream_only_v5_2.json'
 
 
+# min_pos_duration = None
 # ignore_single_action = False
 # answer_insert_point = [0.1, 0.5]
 # stream_positive_point = 0.6
@@ -152,6 +154,7 @@ for item in test_data:
 # tar_file = f'/home/SENSETIME/zengwang/myprojects/task_define_service/data/perception_test/processed/REC_trainval_stream_only_v5_4.json'
 
 
+# min_pos_duration = None
 # ignore_single_action = False
 # answer_insert_point = 0.3
 # stream_positive_point = 0.7
@@ -160,6 +163,7 @@ for item in test_data:
 # tar_file = f'/home/SENSETIME/zengwang/myprojects/task_define_service/data/perception_test/processed/REC_trainval_stream_only_v5_6.json'
 
 
+# min_pos_duration = None
 # ignore_single_action = False
 # answer_insert_point = [0.1, 0.5]
 # stream_positive_point = 0.6
@@ -168,12 +172,32 @@ for item in test_data:
 # tar_file = f'/home/SENSETIME/zengwang/myprojects/task_define_service/data/perception_test/processed/REC_trainval_stream_only_v5_7.json'
 
 
+
+# min_pos_duration = None
+# ignore_single_action = False
+# answer_insert_point = 0.3
+# stream_positive_point = 0.3
+# action_extend_time = 2
+# action_bridge_time = 2
+# tar_file = f'/home/SENSETIME/zengwang/myprojects/task_define_service/data/perception_test/processed/REC_trainval_stream_only_v5_8.json'
+
+
+# min_pos_duration = None
+# ignore_single_action = False
+# answer_insert_point = 0.3
+# stream_positive_point = 0.0     # 片段内部全给正监督
+# action_extend_time = 2
+# action_bridge_time = 2
+# tar_file = f'/home/SENSETIME/zengwang/myprojects/task_define_service/data/perception_test/processed/REC_trainval_stream_only_v5_9.json'
+
+
+min_pos_duration = 2        # 相关片段内的 Y 监督，尽量大于2s
 ignore_single_action = False
 answer_insert_point = 0.3
-stream_positive_point = 0.3
+stream_positive_point = 0.7
 action_extend_time = 2
 action_bridge_time = 2
-tar_file = f'/home/SENSETIME/zengwang/myprojects/task_define_service/data/perception_test/processed/REC_trainval_stream_only_v5_8.json'
+tar_file = f'/home/SENSETIME/zengwang/myprojects/task_define_service/data/perception_test/processed/REC_trainval_stream_only_v5_10.json'
 
 
 tar_data = []
@@ -262,6 +286,9 @@ for subset in ['train', 'valid']:
                         pos_point = random.uniform(stream_positive_point[0], stream_positive_point[1])
                     else:
                         pos_point = stream_positive_point
+                    if min_pos_duration is not None:
+                        pos_point = min(pos_point, 1 - min_pos_duration / (tmp_end-tmp_start))
+                        pos_point = max(pos_point, 0)
                     positive_time.append([tmp_start + pos_point * (tmp_end-tmp_start), tmp_end])
 
                     # action 结束后一小段时间可以回复, 但是不要超过下一段action
@@ -360,4 +387,5 @@ with open(tar_file, 'w', encoding='utf-8') as f:
 # v5_6: {0: 742931, 1: 154458, -100: 804093} 73091
 # v5_7: {0: 804685, 1: 94896, -100: 803050} 73091
 # v5_8: {0: 652501, 1: 309835, -100: 732761} 72817
-
+# v5_9: {0: 652501, 1: 379155, -100: 663441} 72817
+# v5_10: {0: 652501, 1: 299574, -100: 743022} 72817
