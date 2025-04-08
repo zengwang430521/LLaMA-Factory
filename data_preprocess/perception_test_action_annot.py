@@ -66,6 +66,7 @@ def process_action(video: str, action: dict, item: dict, video_path: str, real_f
 
         act_start, act_end = action['timestamps']
         act_start, act_end = act_start * 1e-6, act_end * 1e-6
+        act_end = min(act_end, act_start + 1)
         act_frames = int(math.floor((act_end - act_start) * real_fps))
 
         video_info = {
