@@ -1,6 +1,6 @@
 """
 只用来训练LLM head
-回复数字 + 具体在干的事
+video caption
 """
 
 import copy
@@ -143,14 +143,6 @@ def get_frame_label(messages, videos, video_duration, real_fps, mask_history=Tru
     return frame_times, frame_labels
 
 
-query_template = """ 
-In the video, the man/woman is {activity} repetitively. 
-Your task is to count how many times he/she has completed the action of {activity}.
-Remind me every time when he/she finishes one.
-First provide a single number (e.g., 0, 1, 2, 3…) indicating the total count.
-Then describe the action.
-"""
-
 # 为了保证没有数据泄漏
 test_file = '/home/SENSETIME/zengwang/myprojects/task_define_service/data/OVO-Bench/ovo_bench.json'
 test_videos = set()
@@ -163,10 +155,20 @@ for item in test_data:
             test_videos.add(os.path.basename(video).split('.mp4')[0])
 
 
-
-ignore_single_action = False
+instructions = [
+    {"role": "user", "content": "Please concisely narrate the video in real time."},
+    {"role": "user", "content": "Help me to illustrate my view in short."},
+    {"role": "user", "content": "Please simply describe what do you see."},
+    {"role": "user", "content": "Continuously answer what you observed with simple text."},
+    {"role": "user", "content": "Do concise real-time narration."},
+    {"role": "user", "content": "Hey assistant, do you know the current video content? Reply me concisely."},
+    {"role": "user", "content": "Simply interpret the scene for me."},
+    {"role": "user", "content": "What can you tell me about? Be concise."},
+    {"role": "user", "content": "Use simple text to explain what is shown in front of me."},
+    {"role": "user", "content": "What is the action now? Please response in short."},
+]
 answer_insert_point = [0.7, 1.0]
-tar_file = f'/home/SENSETIME/zengwang/myprojects/task_define_service/data/perception_test/processed/REC_trainval_llm_only_v2.json'
+tar_file = f'/home/SENSETIME/zengwang/myprojects/task_define_service/data/perception_test/processed/REC_trainval_llm_only_v3.json'
 
 
 tar_data = []
@@ -190,81 +192,41 @@ for subset in ['train', 'valid']:
         real_fps = item['metadata']['frame_rate']
         frame_interval = 1.0 / real_fps
 
-        action_counts = {}
+        messages, videos = [], []
+
+        query = random.choice(instructions['content'])
+        query_time = 0
+        messages.append({"role": "user", "content": query})
+        last_time = query_time
+
         for action in item["action_localisation"]:
-            action_type = action['label']
-            if action_type in action_counts:
-                action_counts[action_type] += 1
+            action_desc = ''
+            answer = f'The person is {action_desc}'
+
+            act_start, act_end = action['timestamps'][0] * 1e-6, action['timestamps'][1] * 1e-6
+            if isinstance(answer_insert_point, list) or isinstance(answer_insert_point, tuple):
+                insert_point = random.uniform(answer_insert_point[0], answer_insert_point[1])
             else:
-                action_counts[action_type] = 1
+                insert_point = answer_insert_point
+            response_time = act_start + insert_point * (act_end - act_start)
 
-        for activity in action_counts.keys():
-            if activity.lower() == 'other':
-                num_other += 1
-                continue
-            # 只利用出现了多次的动作生成计数数据
-            if ignore_single_action and action_counts[activity] < 2:
-                continue
+            video_info = {
+                "file": video_path,
+                "time": [last_time, response_time],
+            }
+            messages.append({"role": "user", "content": "<video>", 'ignore_end_stream': True})
+            videos.append(video_info)
+            messages.append({"role": "assistant", "content": answer})
+            last_time = response_time
 
-            filtered_action = [action for action in item["action_localisation"] if action['label'] == activity]
-            filtered_action_times = [[action['timestamps'][0] * 1e-6, action['timestamps'][1] * 1e-6] for action in filtered_action]
+        tar_item = {"messages": messages, "videos": videos}
+        tar_data.append(tar_item)
 
-            query = query_template.format(activity=activity.lower())
-            first_response_time = filtered_action_times[0][0]
-
-            max_query_time = math.floor(first_response_time - 3)
-            max_query_time = max(max_query_time, 0)
-            query_time = float(random.randint(0, int(max_query_time)))
-
-            messages, videos = [], []
-            if query_time > 0:
-                messages.append({"role": "user", "content": "<video>", 'ignore_end_stream': True})
-                videos.append({"file": video_path, "time": [0, query_time]})
-            messages.append({"role": "user", "content": query})
-
-            last_time = query_time
-            for idx in range(len(filtered_action_times)):
-                count = idx + 1
-                act_start, act_end = filtered_action_times[idx]
-
-                action = filtered_action[idx]
-                objects = []
-                for id_obj in action['parent_objects']:
-                    objects.append(item['object_tracking'][id_obj]['label'])
-
-                act_desc = activity.lower()
-                something_num = act_desc.count('something')
-                if something_num != len(objects):
-                    print(f'Mismatch: {activity} -- {objects}')
-                for obj in objects:
-                    act_desc = act_desc.replace('something', obj, 1)
-
-                answer = f'{count}\nThe person is {act_desc}.'
-
-                if isinstance(answer_insert_point, list) or isinstance(answer_insert_point, tuple):
-                    insert_point = random.uniform(answer_insert_point[0], answer_insert_point[1])
-                else:
-                    insert_point = answer_insert_point
-
-                response_time = act_start + insert_point * (act_end - act_start)
-
-                video_info = {
-                    "file": video_path,
-                    "time": [last_time, response_time],
-                }
-                messages.append({"role": "user", "content": "<video>", 'ignore_end_stream': True})
-                videos.append(video_info)
-                messages.append({"role": "assistant", "content": answer})
-                last_time = response_time
-
-            tar_item = {"messages": messages, "videos": videos}
-            tar_data.append(tar_item)
-
-            frame_times, frame_labels = get_frame_label(copy.deepcopy(messages), videos, video_duration, real_fps, mask_history=True)
-            for frame_label in frame_labels:
-                for l in frame_label:
-                    label_count[l] += 1
-            t = 0
+        frame_times, frame_labels = get_frame_label(copy.deepcopy(messages), videos, video_duration, real_fps, mask_history=True)
+        for frame_label in frame_labels:
+            for l in frame_label:
+                label_count[l] += 1
+        t = 0
 
 print(label_count)
 print(len(tar_data))

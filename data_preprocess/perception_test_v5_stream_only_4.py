@@ -160,12 +160,21 @@ for item in test_data:
 # tar_file = f'/home/SENSETIME/zengwang/myprojects/task_define_service/data/perception_test/processed/REC_trainval_stream_only_v5_6.json'
 
 
+# ignore_single_action = False
+# answer_insert_point = [0.1, 0.5]
+# stream_positive_point = 0.6
+# action_extend_time = 0
+# action_bridge_time = 1
+# tar_file = f'/home/SENSETIME/zengwang/myprojects/task_define_service/data/perception_test/processed/REC_trainval_stream_only_v5_7.json'
+
+
 ignore_single_action = False
-answer_insert_point = [0.1, 0.5]
-stream_positive_point = 0.6
-action_extend_time = 0
-action_bridge_time = 1
-tar_file = f'/home/SENSETIME/zengwang/myprojects/task_define_service/data/perception_test/processed/REC_trainval_stream_only_v5_7.json'
+answer_insert_point = 0.3
+stream_positive_point = 0.3
+action_extend_time = 2
+action_bridge_time = 2
+tar_file = f'/home/SENSETIME/zengwang/myprojects/task_define_service/data/perception_test/processed/REC_trainval_stream_only_v5_8.json'
+
 
 tar_data = []
 label_count = {0: 0, 1: 0, -100: 0}
@@ -340,8 +349,7 @@ for subset in ['train', 'valid']:
                         label_count[l] += 1
                 t = 0
 
-print(label_count)
-print(len(tar_data))
+print(label_count, len(tar_data))
 
 os.makedirs(os.path.dirname(tar_file), exist_ok=True)
 with open(tar_file, 'w', encoding='utf-8') as f:
@@ -351,3 +359,5 @@ with open(tar_file, 'w', encoding='utf-8') as f:
 # v5_4: {0: 743316, 1: 178116, -100: 780671} 73091
 # v5_6: {0: 742931, 1: 154458, -100: 804093} 73091
 # v5_7: {0: 804685, 1: 94896, -100: 803050} 73091
+# v5_8: {0: 652501, 1: 309835, -100: 732761} 72817
+

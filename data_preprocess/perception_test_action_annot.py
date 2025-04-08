@@ -34,7 +34,7 @@ tar_dict = {}
 os.makedirs(temp_dir, exist_ok=True)
 
 
-MAX_WORKERS = 20  # 可修改最大并行数
+MAX_WORKERS = 200  # 可修改最大并行数
 
 
 
@@ -66,30 +66,43 @@ def process_action(video: str, action: dict, item: dict, video_path: str, real_f
 
         act_start, act_end = action['timestamps']
         act_start, act_end = act_start * 1e-6, act_end * 1e-6
-        act_end = min(act_end, act_start + 1)
         act_frames = int(math.floor((act_end - act_start) * real_fps))
+
+        # video_info = {
+        #     "type": "video",
+        #     "video": video_path,
+        #     "video_start": act_start,
+        #     "video_end": act_end,
+        #     "total_pixels": 2 * 24576 * 28 * 28,
+        #     "min_pixels": 16 * 28 * 2,
+        #     "max_pixles": 2 * 768 * 28 * 28,
+        #     "nframes": max(min(32, act_frames // 2 * 2), 2)
+        # }
 
         video_info = {
             "type": "video",
             "video": video_path,
             "video_start": act_start,
             "video_end": act_end,
-            "total_pixels": 2 * 24576 * 28 * 28,
+            "total_pixels": 2 * 12288 * 28 * 28,
             "min_pixels": 16 * 28 * 2,
-            "max_pixles": 2 * 768 * 28 * 28,
-            "nframes": min(32, act_frames // 2 * 2)
+            "max_pixles": 2 * 384 * 28 * 28,
+            "nframes": max(min(16, act_frames // 2 * 2), 2)
         }
 
-        messages = [{'role': 'user', 'content': [{'type': 'text', 'text': prompt}, video_info]}]
-        response = call_qwen2vl(messages, "Qwen2.5-VL-72B-Instruct")
+        try:
+            messages = [{'role': 'user', 'content': [{'type': 'text', 'text': prompt}, video_info]}]
+            response = call_qwen2vl(messages, "Qwen2.5-VL-72B-Instruct")
 
-        print('-'*100)
-        print(f'{action_type}: {objects}')
-        print(response)
-        print('-'*100)
+            print('-'*100)
+            print(f'{action_type}: {objects}')
+            print(response)
+            print('-'*100)
 
-        with open(output_file, 'w', encoding='utf-8') as f:
-            f.write(response)
+            with open(output_file, 'w', encoding='utf-8') as f:
+                f.write(response)
+        except:
+            return None, None
     return f'{video}_{act_id}', response
 
 
