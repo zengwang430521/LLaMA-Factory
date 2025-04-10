@@ -125,5 +125,5 @@ for subset in ['train', 'valid']:
             if result and result[0]:
                 tar_dict[result[0]] = result[1]
 
-with open(tar_file, 'r', encoding='utf-8') as f:
+with open(tar_file, 'w', encoding='utf-8') as f:
     json.dump(tar_dict, f, ensure_ascii=False, indent=2)
