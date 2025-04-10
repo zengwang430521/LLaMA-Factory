@@ -52,7 +52,7 @@ def clear_time_segs(
     return merged
 
 
-def get_frame_label(messages, videos, video_duration, real_fps, mask_history=True):
+def get_frame_label(messages, videos, video_duration, real_fps, mask_history=False):
     video_files = [v['file'] for v in videos]
     video_time_segs = [v['time'] for v in videos]
     valids = []
@@ -168,10 +168,13 @@ ignore_single_action = False
 answer_insert_point = [0.7, 1.0]
 tar_file = f'/home/SENSETIME/zengwang/myprojects/task_define_service/data/perception_test/processed/REC_trainval_llm_only_v2.json'
 
-
 tar_data = []
 label_count = {0: 0, 1: 0, -100: 0}
 num_other = 0
+
+act_desc_file= '/home/SENSETIME/zengwang/myprojects/task_define_service/data/perception_test/total_action_desc.json'
+with open(act_desc_file, 'r', encoding='utf-8') as f:
+    act_desc_dict = json.load(f)
 
 for subset in ['train', 'valid']:
     src_file = f'/home/SENSETIME/zengwang/myprojects/task_define_service/data/perception_test/all_{subset}.json'
@@ -220,7 +223,7 @@ for subset in ['train', 'valid']:
             if query_time > 0:
                 messages.append({"role": "user", "content": "<video>", 'ignore_end_stream': True})
                 videos.append({"file": video_path, "time": [0, query_time]})
-            messages.append({"role": "user", "content": query})
+            messages.append({"role": "user", "content": query, 'ignore_end_stream': True})
 
             last_time = query_time
             for idx in range(len(filtered_action_times)):
@@ -228,18 +231,26 @@ for subset in ['train', 'valid']:
                 act_start, act_end = filtered_action_times[idx]
 
                 action = filtered_action[idx]
-                objects = []
-                for id_obj in action['parent_objects']:
-                    objects.append(item['object_tracking'][id_obj]['label'])
+                act_id = action['id']
+                action_type = action['label']
+                assert action_type == activity
 
-                act_desc = activity.lower()
-                something_num = act_desc.count('something')
-                if something_num != len(objects):
-                    print(f'Mismatch: {activity} -- {objects}')
-                for obj in objects:
-                    act_desc = act_desc.replace('something', obj, 1)
+                act_desc = action_type.lower()
+                if act_desc != 'clapping hands':
+                    act_desc = act_desc_dict[f'{video}_{act_id}']
+
+                # objects = []
+                # for id_obj in action['parent_objects']:
+                #     objects.append(item['object_tracking'][id_obj]['label'])
+                # act_desc = activity.lower()
+                # something_num = act_desc.count('something')
+                # if something_num != len(objects):
+                #     print(f'Mismatch: {activity} -- {objects}')
+                # for obj in objects:
+                #     act_desc = act_desc.replace('something', obj, 1)
 
                 answer = f'{count}\nThe person is {act_desc}.'
+                answer = answer.replace('..', '.')
 
                 if isinstance(answer_insert_point, list) or isinstance(answer_insert_point, tuple):
                     insert_point = random.uniform(answer_insert_point[0], answer_insert_point[1])
@@ -260,7 +271,7 @@ for subset in ['train', 'valid']:
             tar_item = {"messages": messages, "videos": videos}
             tar_data.append(tar_item)
 
-            frame_times, frame_labels = get_frame_label(copy.deepcopy(messages), videos, video_duration, real_fps, mask_history=True)
+            frame_times, frame_labels = get_frame_label(copy.deepcopy(messages), videos, video_duration, real_fps, mask_history=False)
             for frame_label in frame_labels:
                 for l in frame_label:
                     label_count[l] += 1
@@ -269,9 +280,9 @@ for subset in ['train', 'valid']:
 print(label_count)
 print(len(tar_data))
 
-# os.makedirs(os.path.dirname(tar_file), exist_ok=True)
-# with open(tar_file, 'w', encoding='utf-8') as f:
-#     json.dump(tar_data, f, ensure_ascii=False, indent=2)
+os.makedirs(os.path.dirname(tar_file), exist_ok=True)
+with open(tar_file, 'w', encoding='utf-8') as f:
+    json.dump(tar_data, f, ensure_ascii=False, indent=2)
 
 
 # 多次 + 单次： {0: 0, 1: 0, -100: 325257}  22209

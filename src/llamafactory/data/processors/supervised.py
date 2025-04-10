@@ -689,7 +689,7 @@ def _encode_supervised_stream_example_v4(
     return input_ids, labels, stream_labels, frame_idxs, frame_times, video_grid_thw, masks,reserved_message_num
 
 
-'''修改代码，实现更负责的监督'''
+'''修改代码，实现更复杂的监督'''
 def _encode_supervised_stream_example_v5(
     prompt: Sequence[Dict[str, str]],
     response: Sequence[Dict[str, str]],
@@ -712,7 +712,6 @@ def _encode_supervised_stream_example_v5(
     # import pdb; pdb.set_trace()
     # print('Debug V5: 产生input_ids, labels, stream_labels')
 
-    # import pdb; pdb.set_trace()
     messages, frame_idxs, frame_times, video_grid_thw = template.mm_plugin.process_messages(prompt + response, images, videos, processor)
     input_ids, labels = template.mm_plugin.process_token_ids([], [], images, videos, tokenizer, processor)
     masks = [1] * len(input_ids)
@@ -781,7 +780,10 @@ def _encode_supervised_stream_example_v5(
                 else:
                     tmp_stream_labels.append(IGNORE_INDEX)
 
-            if not message.get("ignore_end_stream", False):
+            ignore_end_stream = message.get("ignore_end_stream", False)
+            if ignore_end_stream is None:
+                ignore_end_stream = False
+            if not ignore_end_stream:
                 # 最后一个判定点, 用 encode_elements 找
                 need_response = False
                 if i + 1 < len(messages):
@@ -822,9 +824,14 @@ def _encode_supervised_stream_example_v5(
             encoded_prefix = template._convert_elements_to_ids(tokenizer, prefix)
             encoded_content = template._convert_elements_to_ids(tokenizer, content)
             encode_elements = encoded_prefix + encoded_content
+
+            valid = message.get('valid', True)
+            if valid is None:
+                valid = True
+
             if mask_history and i < len(messages) - 1:
                 encode_labels = [IGNORE_INDEX] * len(encoded_prefix + encoded_content)
-            elif not message.get('valid', True):
+            elif not valid:
                 # 有时候会有 fake response
                 encode_labels = [IGNORE_INDEX] * len(encoded_prefix + encoded_content)
             else:
@@ -887,6 +894,8 @@ def preprocess_supervised_dataset(
 ) -> Dict[str, List[Any]]:
     # build inputs with format `<bos> X Y <eos>` and labels with format `<ignore> ... <ignore> Y <eos>`
     # for multiturn examples, we only mask the prompt part in each prompt-response pair.
+
+    # import pdb; pdb.set_trace()
 
     model_inputs = defaultdict(list)
     # print('debug')
@@ -1057,6 +1066,84 @@ def preprocess_supervised_dataset(
         elif data_args.template == 'qwen2_vl_stream_v5':
             # qwen2_vl_stream 对话数据不进行验证, 并且需要额外的stream_labels
             # 数据集中少量视频文件有问题，放弃这些数据
+            # try:
+            #     input_ids0, labels0, stream_labels0, frame_idxs0, frame_times0, video_grid_thw0, masks0, reserved_message_num0 = _encode_supervised_stream_example_v5(
+            #         prompt=examples["_prompt"][i],
+            #         response=examples["_response"][i],
+            #         system=examples["_system"][i],
+            #         tools=examples["_tools"][i],
+            #         images=examples["_images"][i] or [],
+            #         videos=examples["_videos"][i] or [],
+            #         template=template,
+            #         tokenizer=tokenizer,
+            #         processor=processor,
+            #         cutoff_len=data_args.cutoff_len,
+            #         train_on_prompt=data_args.train_on_prompt,
+            #         mask_history=True
+            #     )
+            #
+            #     input_ids, labels, stream_labels, frame_idxs, frame_times, video_grid_thw, masks, reserved_message_num = _encode_supervised_stream_example_v5(
+            #         prompt=examples["_prompt"][i],
+            #         response=examples["_response"][i],
+            #         system=examples["_system"][i],
+            #         tools=examples["_tools"][i],
+            #         images=examples["_images"][i] or [],
+            #         videos=examples["_videos"][i] or [],
+            #         template=template,
+            #         tokenizer=tokenizer,
+            #         processor=processor,
+            #         cutoff_len=data_args.cutoff_len,
+            #         train_on_prompt=data_args.train_on_prompt,
+            #         mask_history=False
+            #     )
+            # except:
+            #     print(f'Skip broken data!!!:{examples["_videos"][i]}.')
+            #     continue
+            #
+            # import numpy as np
+            # import torch
+            #
+            # def compare_elements(a, b):
+            #     # 如果元素是整数，直接比较
+            #     if isinstance(a, int) and isinstance(b, int):
+            #         return a == b
+            #     # 如果元素是numpy.ndarray类型，使用np.array_equal比较
+            #     elif isinstance(a, np.ndarray) and isinstance(b, np.ndarray):
+            #         return np.array_equal(a, b)
+            #     # 如果元素是torch.Tensor类型，使用torch.equal比较
+            #     elif isinstance(a, torch.Tensor) and isinstance(b, torch.Tensor):
+            #         return torch.equal(a, b)
+            #     # 如果元素类型不同，返回False
+            #     return False
+            #
+            # def compare_lists(list1, list2):
+            #     # 如果两个列表长度不相同，直接返回False
+            #     if len(list1) != len(list2):
+            #         return False
+            #
+            #     # 遍历列表中的元素进行比较
+            #     for item1, item2 in zip(list1, list2):
+            #         if not compare_elements(item1, item2):
+            #             return False
+            #     return True
+            #
+            # # import pdb; pdb.set_trace()
+            # try:
+            #     assert compare_lists(input_ids, input_ids0)
+            #     assert compare_lists(labels, labels0)
+            #     assert compare_lists(stream_labels, stream_labels0)
+            #     assert compare_lists(frame_idxs, frame_idxs0)
+            #     assert compare_lists(frame_times, frame_times0)
+            #     assert compare_lists(video_grid_thw, video_grid_thw0)
+            #     assert compare_lists(masks, masks0)
+            #     assert reserved_message_num == reserved_message_num0
+            # except:
+            #     import pdb; pdb.set_trace()
+            #     print('error')
+
+            # qwen2_vl_stream 对话数据不进行验证, 并且需要额外的stream_labels
+            # 数据集中少量视频文件有问题，放弃这些数据
+
             try:
                 input_ids, labels, stream_labels, frame_idxs, frame_times, video_grid_thw, masks, reserved_message_num = _encode_supervised_stream_example_v5(
                     prompt=examples["_prompt"][i],
@@ -1070,7 +1157,7 @@ def preprocess_supervised_dataset(
                     processor=processor,
                     cutoff_len=data_args.cutoff_len,
                     train_on_prompt=data_args.train_on_prompt,
-                    mask_history=data_args.mask_history,
+                    mask_history=data_args.mask_history
                 )
             except:
                 print(f'Skip broken data!!!:{examples["_videos"][i]}.')

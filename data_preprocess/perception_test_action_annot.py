@@ -45,6 +45,9 @@ def process_action(video: str, action: dict, item: dict, video_path: str, real_f
 
     act_id = action['id']
     output_file = os.path.join(temp_dir, f'{video}_{act_id}.txt')
+    if f'{video}_{act_id}' == 'video_10993_0':
+        import pdb; pdb.set_trace()
+        print(f'{video}_{act_id}')
 
     if os.path.exists(output_file):
         with open(output_file, 'r', encoding='utf-8') as f:
@@ -90,19 +93,16 @@ def process_action(video: str, action: dict, item: dict, video_path: str, real_f
             "nframes": max(min(16, act_frames // 2 * 2), 2)
         }
 
-        try:
-            messages = [{'role': 'user', 'content': [{'type': 'text', 'text': prompt}, video_info]}]
-            response = call_qwen2vl(messages, "Qwen2.5-VL-72B-Instruct")
+        messages = [{'role': 'user', 'content': [{'type': 'text', 'text': prompt}, video_info]}]
+        response = call_qwen2vl(messages, "Qwen2.5-VL-72B-Instruct")
 
-            print('-'*100)
-            print(f'{action_type}: {objects}')
-            print(response)
-            print('-'*100)
+        print('-'*100)
+        print(f'{action_type}: {objects}')
+        print(response)
+        print('-'*100)
+        with open(output_file, 'w', encoding='utf-8') as f:
+            f.write(response)
 
-            with open(output_file, 'w', encoding='utf-8') as f:
-                f.write(response)
-        except:
-            return None, None
     return f'{video}_{act_id}', response
 
 
@@ -110,6 +110,12 @@ for subset in ['train', 'valid']:
     src_file = os.path.join(src_dir, f'all_{subset}.json')
     with open(src_file, 'r') as f:
         src_data = json.load(f)
+
+    # for video, item in src_data.items():
+    #     video_path = os.path.join(video_dir, f'{video}.mp4')
+    #     real_fps = item['metadata']['frame_rate']
+    #     for action in item["action_localisation"]:
+    #         process_action(video, action, item, video_path, real_fps)
 
     tasks = []
     for video, item in src_data.items():

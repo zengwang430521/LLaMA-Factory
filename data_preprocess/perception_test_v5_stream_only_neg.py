@@ -1,6 +1,18 @@
 """
-只用来训练LLM head
-只回复数字
+视频： [......视频a......] [......视频b......][......目标片段1......][......视频c......][......目标片段2......][...视频d...]
+文字：                   Q                           Answer1                                 Answer2
+
+data:
+[......视频a......] Query [......视频b......][......目标片段1......][......视频c......][......目标片段2......][...视频d...] Answer1
+------------------------n nnnnnnnnnnnnnnnnn ----------------YYYYY YYYY-----nnnnnnnnn -----------------YYYY YYYY----nnn -------
+
+[......视频a......] Query [......视频b......][......目标片段1 Answer1 ......][......视频c......][......目标片段2......][...视频d...] Answer2
+------------------------- ----------------- ----------------------- nnnnnn nnnnnnnnnnnnnnnnnn -----------------YYYY YYYY---nnnn -------
+
+[......视频a......] Query [......视频b......][......目标片段1 Answer1 ......][......视频c......][......目标片段2 Answer2......][...视频d...] Fake Answer
+------------------------ ------------------ ----------------------- ------ ------------------ ----------------------nnnnnnn nnnnnnnnnnnn -----------
+
+完全的负样本
 """
 
 import copy
@@ -10,50 +22,12 @@ import numpy as np
 from tqdm import tqdm
 import random
 random.seed(42)
-
 import math
 import os
-from typing import List
+from collections import defaultdict
 
 
-def clear_time_segs(
-    time_segs: List[List[int]],
-    global_seg: List[int],
-    merge: bool = False
-) -> List[List[int]]:
-    if time_segs is None:
-        return time_segs
-    if len(time_segs) == 0:
-        return []
-
-    time_segs = copy.deepcopy(time_segs)
-    global_seg = copy.deepcopy(global_seg)
-
-    global_start, global_end = global_seg
-
-    # 过滤：只剔除完全不相交的段
-    filtered = [
-        [start, end] for start, end in time_segs
-        if not (end < global_start or start > global_end)
-    ]
-
-    if not merge or not filtered:
-        return sorted(filtered)
-
-    # 合并相交或相连的时间段
-    filtered.sort(key=lambda x: x[0])
-    merged = [filtered[0]]
-    for current in filtered[1:]:
-        last = merged[-1]
-        if current[0] <= last[1]:  # 相交或相连
-            last[1] = max(last[1], current[1])  # 合并
-        else:
-            merged.append(current)
-
-    return merged
-
-
-def get_frame_label(messages, videos, video_duration, real_fps, mask_history=False):
+def get_frame_label(messages, video_duration, real_fps, mask_history=True):
     video_files = [v['file'] for v in videos]
     video_time_segs = [v['time'] for v in videos]
     valids = []
@@ -67,7 +41,6 @@ def get_frame_label(messages, videos, video_duration, real_fps, mask_history=Fal
                 valids.append(True)
             content = content.replace("<video>", "", 1)
 
-    assert len(valids) == len(video_time_segs)
     # 先处理一下time_seg
     total_duration = 0
     for i in range(len(video_time_segs)):
@@ -164,10 +137,52 @@ for item in test_data:
             test_videos.add(os.path.basename(video).split('.mp4')[0])
 
 
+session_per_video = 1
+query_point = [0, 0.3]
+tar_file = f'/home/SENSETIME/zengwang/myprojects/task_define_service/data/perception_test/processed/REC_trainval_stream_only_v5_neg_1.json'
 
-ignore_single_action = False
-answer_insert_point = [0.7, 1.0]
-tar_file = f'/home/SENSETIME/zengwang/myprojects/task_define_service/data/perception_test/processed/REC_trainval_llm_only_v1.json'
+
+# session_per_video = 4
+# query_point = [0, 0.3]
+# tar_file = f'/home/SENSETIME/zengwang/myprojects/task_define_service/data/perception_test/processed/REC_trainval_stream_only_v5_neg_2.json'
+
+
+# 统计 action 出现的次数：
+action_freq = defaultdict(lambda: 0)
+for subset in ['train', 'valid']:
+    src_file = f'/home/SENSETIME/zengwang/myprojects/task_define_service/data/perception_test/all_{subset}.json'
+    with open(src_file, 'r') as f:
+        src_data = json.load(f)
+    for video in tqdm(src_data):
+        if video in test_videos:
+            print(f'skip:{subset}/{video}.mp4')
+            continue
+        video_path = f'perception_test/videos/{video}.mp4'
+        item = src_data[video]
+        for action in item['action_localisation']:
+            action_freq[action['label']] += 1
+
+
+def sample_actions(action_freq, n, action_except):
+    # 过滤掉 action_out 中的 key
+    filtered_actions = {k: v for k, v in action_freq.items() if k not in action_except}
+
+    # 如果过滤后的字典为空或样本数量大于可用键数，返回空列表
+    if not filtered_actions:
+        return []
+
+    if len(filtered_actions) <= n:
+        return list(filtered_actions.keys())
+
+    # 计算总频次
+    total_freq = sum(filtered_actions.values())
+
+    # 计算每个键的概率
+    action_prob = {k: v / total_freq for k, v in filtered_actions.items()}
+
+    # 按照概率进行不放回采样
+    sampled_actions = random.choices(list(filtered_actions.keys()), weights=list(action_prob.values()), k=n)
+    return sampled_actions
 
 
 tar_data = []
@@ -175,10 +190,8 @@ label_count = {0: 0, 1: 0, -100: 0}
 
 for subset in ['train', 'valid']:
     src_file = f'/home/SENSETIME/zengwang/myprojects/task_define_service/data/perception_test/all_{subset}.json'
-
     with open(src_file, 'r') as f:
         src_data = json.load(f)
-
     for video in tqdm(src_data):
         if video in test_videos:
             print(f'skip:{subset}/{video}.mp4')
@@ -198,68 +211,50 @@ for subset in ['train', 'valid']:
             else:
                 action_counts[action_type] = 1
 
-        for activity in action_counts.keys():
-            if activity.lower() == 'other':
-                continue
+        neg_actions = sample_actions(action_freq, session_per_video, ['Other', 'other'] + list(action_counts.keys()))
 
-            # 只利用出现了多次的动作生成计数数据
-            if ignore_single_action and action_counts[activity] < 2:
-                continue
-
-            filtered_action = [action for action in item["action_localisation"] if action['label'] == activity]
-            filtered_action_times = [[action['timestamps'][0] * 1e-6, action['timestamps'][1] * 1e-6] for action in filtered_action]
-
+        for activity in neg_actions:
             query = query_template.format(activity=activity.lower())
-            first_response_time = filtered_action_times[0][0]
 
-            max_query_time = math.floor(first_response_time - 3)
-            max_query_time = max(max_query_time, 0)
-            query_time = float(random.randint(0, int(max_query_time)))
-
+            if isinstance(query_point, list) or isinstance(query_point, tuple):
+                q_point = random.uniform(query_point[0], query_point[1])
+            else:
+                q_point = query_point
+            query_time = int(math.floor(q_point * video_duration))
             messages, videos = [], []
             if query_time > 0:
                 messages.append({"role": "user", "content": "<video>", 'ignore_end_stream': True})
                 videos.append({"file": video_path, "time": [0, query_time]})
-            messages.append({"role": "user", "content": query, 'ignore_end_stream': True})
+            messages.append({"role": "user", "content": query, 'ignore_end_stream': False})
 
-            last_time = query_time
-            for idx in range(len(filtered_action_times)):
-                count = idx + 1
-                answer = str(count)
-                act_start, act_end = filtered_action_times[idx]
+            # 用来训练保持沉默
+            # fake answer 不能用来训练lm_head
+            video_info = {
+                "file": video_path,
+                "time": [query_time, video_duration],
+                "positive_time": [],
+                "negative_time": [[query_time-frame_interval, video_duration+frame_interval]]
+            }
+            messages.append({"role": "user", "content": "<video>", 'ignore_end_stream': True})
+            videos.append(video_info)
+            messages.append({"role": "assistant", "content": '', "valid": False})
 
-                if isinstance(answer_insert_point, list) or isinstance(answer_insert_point, tuple):
-                    insert_point = random.uniform(answer_insert_point[0], answer_insert_point[1])
-                else:
-                    insert_point = answer_insert_point
-
-                response_time = act_start + insert_point * (act_end - act_start)
-
-                video_info = {
-                    "file": video_path,
-                    "time": [last_time, response_time],
-                }
-                messages.append({"role": "user", "content": "<video>", 'ignore_end_stream': True})
-                videos.append(video_info)
-                messages.append({"role": "assistant", "content": answer})
-                last_time = response_time
-
-            tar_item = {"messages": messages, "videos": videos}
+            tar_item = {"messages": copy.deepcopy(messages), "videos": copy.deepcopy(videos)}
             tar_data.append(tar_item)
-
-            frame_times, frame_labels = get_frame_label(copy.deepcopy(messages), videos, video_duration, real_fps, mask_history=False)
+            frame_times0, frame_labels0 = get_frame_label(copy.deepcopy(messages), video_duration, real_fps, mask_history=True)
+            frame_times, frame_labels = get_frame_label(copy.deepcopy(messages), video_duration, real_fps, mask_history=False)
+            assert frame_labels0 == frame_labels
             for frame_label in frame_labels:
                 for l in frame_label:
                     label_count[l] += 1
             t = 0
 
-print(label_count)
-print(len(tar_data))
+print(tar_file.split('stream_only_')[-1], label_count, len(tar_data))
 
 os.makedirs(os.path.dirname(tar_file), exist_ok=True)
 with open(tar_file, 'w', encoding='utf-8') as f:
     json.dump(tar_data, f, ensure_ascii=False, indent=2)
 
 
-# {0: 0, 1: 0, -100: 323737} 22090
-
+# v5_neg_1.json {0: 155460, 1: 0, -100: 22828} 8044
+# v5_neg_2.json {0: 621840, 1: 0, -100: 91281} 32176

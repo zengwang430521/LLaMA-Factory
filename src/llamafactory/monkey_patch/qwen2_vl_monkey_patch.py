@@ -150,6 +150,7 @@ class Qwen2VLStream(Qwen2VLForConditionalGeneration):
         else:
             self.stream_head = nn.Linear(config.hidden_size, 1, bias=True)     # 二分类，回复/不回复
 
+        # import pdb; pdb.set_trace()
         self.post_init()
 
     @add_start_docstrings_to_model_forward(QWEN2_VL_INPUTS_DOCSTRING)
@@ -608,6 +609,8 @@ class Qwen2VLStreamV3(Qwen2VLStream):
         # if not hasattr(self, "tokenizer"):
         #     from transformers.models.auto import AutoTokenizer
         #     self.tokenizer = AutoTokenizer.from_pretrained("/afs/zengwang/ckpt/Stream-Qwen2-VL-7B-Instruct")
+        #     print(self.tokenizer.decode(labels[labels!=-100]))
+        #
         #     input_texts = self.tokenizer.batch_decode(input_ids)
         #     self.tokenizer.decode(input_ids[attention_mask==1])
         #

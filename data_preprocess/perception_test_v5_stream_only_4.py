@@ -12,6 +12,7 @@ data:
 [......视频a......] Query [......视频b......][......目标片段1 Answer1 ......][......视频c......][......目标片段2 Answer2......][...视频d...] Fake Answer
 ------------------------ ------------------ ----------------------- ------ ------------------ ----------------------nnnnnnn nnnnnnnnnnnn -----------
 
+让数据在不加上 mask_history 的情况下也能使用
 """
 
 import copy
@@ -136,13 +137,13 @@ for item in test_data:
 
 
 
-# min_pos_duration = None
-# ignore_single_action = False
-# answer_insert_point = 0.3
-# stream_positive_point = 0.7
-# action_extend_time = 2
-# action_bridge_time = 2
-# tar_file = f'/home/SENSETIME/zengwang/myprojects/task_define_service/data/perception_test/processed/REC_trainval_stream_only_v5_2.json'
+min_pos_duration = None
+ignore_single_action = False
+answer_insert_point = 0.3
+stream_positive_point = 0.7
+action_extend_time = 2
+action_bridge_time = 2
+tar_file = f'/home/SENSETIME/zengwang/myprojects/task_define_service/data/perception_test/processed/REC_trainval_stream_only_v5_2.json'
 
 
 # min_pos_duration = None
@@ -191,13 +192,13 @@ for item in test_data:
 # tar_file = f'/home/SENSETIME/zengwang/myprojects/task_define_service/data/perception_test/processed/REC_trainval_stream_only_v5_9.json'
 
 
-min_pos_duration = 2        # 相关片段内的 Y 监督，尽量大于2s
-ignore_single_action = False
-answer_insert_point = 0.3
-stream_positive_point = 0.7
-action_extend_time = 2
-action_bridge_time = 2
-tar_file = f'/home/SENSETIME/zengwang/myprojects/task_define_service/data/perception_test/processed/REC_trainval_stream_only_v5_10.json'
+# min_pos_duration = 2        # 相关片段内的 Y 监督，尽量大于2s
+# ignore_single_action = False
+# answer_insert_point = 0.3
+# stream_positive_point = 0.7
+# action_extend_time = 2
+# action_bridge_time = 2
+# tar_file = f'/home/SENSETIME/zengwang/myprojects/task_define_service/data/perception_test/processed/REC_trainval_stream_only_v5_10.json'
 
 
 tar_data = []
@@ -250,7 +251,7 @@ for subset in ['train', 'valid']:
             if query_time > 0:
                 messages.append({"role": "user", "content": "<video>", 'ignore_end_stream': True})
                 videos.append({"file": video_path, "time": [0, query_time]})
-            messages.append({"role": "user", "content": query})
+            messages.append({"role": "user", "content": query, 'ignore_end_stream': False})
 
             # DEBUG 用
             if len(filtered_action_times) >= 3:
@@ -323,7 +324,9 @@ for subset in ['train', 'valid']:
                 tar_data.append(tar_item)
 
                 # 统计一下 stream_label
-                frame_times, frame_labels = get_frame_label(copy.deepcopy(messages), video_duration, real_fps, mask_history=True)
+                frame_times0, frame_labels0 = get_frame_label(copy.deepcopy(messages), video_duration, real_fps, mask_history=True)
+                frame_times, frame_labels = get_frame_label(copy.deepcopy(messages), video_duration, real_fps, mask_history=False)
+                assert frame_labels == frame_labels0
                 for frame_label in frame_labels:
                     for l in frame_label:
                         label_count[l] += 1
@@ -333,9 +336,12 @@ for subset in ['train', 'valid']:
                 先删除之前加入的特殊数据
                 然后把这一轮的回复插在正常但靠前的位置（前25%的位置)，便于后一轮的监督
                 同时让这一轮的 stream label 都是 无监督-
+                并且query最后的stream label只需要监督一次就好，避免多次监督造成bias
                 """
                 messages = messages[:-2]
                 videos = videos[:-1]
+                for msg in messages:
+                    msg['ignore_end_stream'] = True
 
                 if isinstance(answer_insert_point, list) or isinstance(answer_insert_point, tuple):
                     insert_point = random.uniform(answer_insert_point[0], answer_insert_point[1])
@@ -350,7 +356,8 @@ for subset in ['train', 'valid']:
                 }
                 messages.append({"role": "user", "content": "<video>", 'ignore_end_stream': True})
                 videos.append(video_info)
-                messages.append({"role": "assistant", "content": answer})
+                # 回答插入的时机不合适，所以不监督 llm loss, valid = False
+                messages.append({"role": "assistant", "content": answer, "valid": False})
 
                 last_time = response_time
 
@@ -370,7 +377,9 @@ for subset in ['train', 'valid']:
 
                 tar_item = {"messages": copy.deepcopy(messages), "videos": copy.deepcopy(videos)}
                 tar_data.append(tar_item)
-                frame_times, frame_labels = get_frame_label(copy.deepcopy(messages), video_duration, real_fps, mask_history=True)
+                frame_times0, frame_labels0 = get_frame_label(copy.deepcopy(messages), video_duration, real_fps, mask_history=True)
+                frame_times, frame_labels = get_frame_label(copy.deepcopy(messages), video_duration, real_fps, mask_history=False)
+                assert frame_labels0 == frame_labels
                 for frame_label in frame_labels:
                     for l in frame_label:
                         label_count[l] += 1
