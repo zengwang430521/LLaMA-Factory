@@ -752,6 +752,7 @@ class Qwen2VLStreamV3(Qwen2VLStream):
 
         loss = None
         # if labels is not None and logits.requires_grad:
+        # 这个loss 要么都算，要么都不算，否则deepspeed会出错
         if labels is not None and (labels != -100).sum() > 0:
             # Upcast to float if we need to compute the loss to avoid potential precision issues
             logits = logits.float()
@@ -767,12 +768,15 @@ class Qwen2VLStreamV3(Qwen2VLStream):
             llm_loss = loss_fct(shift_logits, shift_labels)
             loss = llm_loss * self.llm_loss_factor
         else:
-            llm_loss = None
+            llm_loss = logits.mean() * 0.0
+            loss = llm_loss * self.llm_loss_factor
 
 
         # stream head
         hidden_states = hidden_states.to(self.stream_head.weight.dtype)
         stream_logits = self.stream_head(hidden_states)
+
+        # 这个loss 要么都算，要么都不算，否则deepspeed会出错
         if stream_labels is not None and (stream_labels != -100).sum() > 0:
             # stream label 不需要做shift
             # Upcast to float if we need to compute the loss to avoid potential precision issues
@@ -812,7 +816,11 @@ class Qwen2VLStreamV3(Qwen2VLStream):
             else:
                 loss = stream_loss * self.stream_loss_factor
         else:
-            stream_loss = None
+            stream_loss = stream_logits.mean() * 0.0
+            if loss is not None:
+                loss += stream_loss * self.stream_loss_factor
+            else:
+                loss = stream_loss * self.stream_loss_factor
 
         # import pdb; pdb.set_trace()
         # print('Debug: 模型Loss')
