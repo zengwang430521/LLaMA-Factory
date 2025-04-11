@@ -112,7 +112,7 @@ def get_frame_label(messages, videos, video_duration, real_fps, mask_history=Fal
             break
 
     # 确定采样的frame idx
-    frame_times =  []
+    frame_times = []
     for video, time_seg, frame_num in zip(videos, video_time_segs, frame_nums):
         t_start, t_end = time_seg
         sample_times = np.linspace(t_start, t_end, frame_num + 1)[1:]

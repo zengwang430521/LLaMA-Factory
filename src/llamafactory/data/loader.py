@@ -133,8 +133,8 @@ def _load_single_dataset(
         )
 
     # import pdb; pdb.set_trace()
-    # print('DeBUG: Load single dataset')
-    # dataset_attr.num_samples = 100
+    print('DeBUG: Load single dataset')
+    dataset_attr.num_samples = 200
 
     if dataset_attr.num_samples is not None and not data_args.streaming:
         target_num = dataset_attr.num_samples

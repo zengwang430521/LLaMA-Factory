@@ -46,7 +46,7 @@ def process_action(video: str, action: dict, item: dict, video_path: str, real_f
     act_id = action['id']
     output_file = os.path.join(temp_dir, f'{video}_{act_id}.txt')
     if f'{video}_{act_id}' == 'video_10993_0':
-        import pdb; pdb.set_trace()
+        # import pdb; pdb.set_trace()
         print(f'{video}_{act_id}')
 
     if os.path.exists(output_file):

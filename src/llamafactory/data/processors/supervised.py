@@ -866,7 +866,7 @@ def _encode_supervised_stream_example_v5(
     #     stream_labels = stream_labels[:cutoff_len]
     #     masks = masks[:cutoff_len]
 
-    return input_ids, labels, stream_labels, frame_idxs, frame_times, video_grid_thw, masks,reserved_message_num
+    return input_ids, labels, stream_labels, frame_idxs, frame_times, video_grid_thw, masks, reserved_message_num
 
 
 
