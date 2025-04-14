@@ -125,7 +125,8 @@ Do not include any additional text or explanation in your response.
 """
 
 # 为了保证没有数据泄漏
-test_file = '/home/SENSETIME/zengwang/myprojects/task_define_service/data/OVO-Bench/ovo_bench.json'
+# test_file = '/home/SENSETIME/zengwang/myprojects/task_define_service/data/OVO-Bench/ovo_bench.json'
+test_file = '/afs/zengwang/projects/task_define_service/OVO-Bench/data/ovo_bench.json'
 test_videos = set()
 with open(test_file, 'r') as f:
     test_data = json.load(f)
@@ -143,7 +144,8 @@ answer_insert_point = 0.3
 stream_positive_point = 0.7
 action_extend_time = 2
 action_bridge_time = 2
-tar_file = f'/home/SENSETIME/zengwang/myprojects/task_define_service/data/perception_test/processed/REC_trainval_stream_only_v5_2.json'
+# tar_file = f'/home/SENSETIME/zengwang/myprojects/task_define_service/data/perception_test/processed/REC_trainval_stream_only_v5_2.json'
+tar_file = f'/afs/zengwang/projects/task_define_service/data/processed/perception_test/REC_trainval_stream_only_v5_2.json'
 
 
 # min_pos_duration = None
@@ -205,7 +207,8 @@ tar_data = []
 label_count = {0: 0, 1: 0, -100: 0}
 
 for subset in ['train', 'valid']:
-    src_file = f'/home/SENSETIME/zengwang/myprojects/task_define_service/data/perception_test/all_{subset}.json'
+    # src_file = f'/home/SENSETIME/zengwang/myprojects/task_define_service/data/perception_test/all_{subset}.json'
+    src_file = f'/afs/zengwang/projects/task_define_service/data/perception_test/all_{subset}.json'
 
     with open(src_file, 'r') as f:
         src_data = json.load(f)
@@ -249,9 +252,9 @@ for subset in ['train', 'valid']:
 
             messages, videos = [], []
             if query_time > 0:
-                messages.append({"role": "user", "content": "<video>", 'ignore_end_stream': True})
-                videos.append({"file": video_path, "time": [0, query_time]})
-            messages.append({"role": "user", "content": query, 'ignore_end_stream': False})
+                messages.append({"role": "user", "content": "<video>", 'ignore_end_stream': True, "valid":True})
+                videos.append({"file": video_path, "time": [0, query_time], "positive_time": [[-2.0, -1.0]], "negative_time": [[-2.0, -1.0]]})
+            messages.append({"role": "user", "content": query, 'ignore_end_stream': False, "valid":True})
 
             # DEBUG 用
             if len(filtered_action_times) >= 3:
@@ -315,9 +318,9 @@ for subset in ['train', 'valid']:
                     "positive_time": positive_time,
                     "negative_time": negative_time
                 }
-                messages.append({"role": "user", "content": "<video>", 'ignore_end_stream': True})
+                messages.append({"role": "user", "content": "<video>", 'ignore_end_stream': True, "valid": True})
                 videos.append(video_info)
-                messages.append({"role": "assistant", "content": answer})
+                messages.append({"role": "assistant", "content": answer, 'ignore_end_stream': True, "valid": False})
 
                 # 这里必须deepcopy，因为后续需要修改messages
                 tar_item = {"messages": copy.deepcopy(messages), "videos": copy.deepcopy(videos)}
@@ -354,10 +357,10 @@ for subset in ['train', 'valid']:
                     "file": video_path,
                     "time": [last_time, response_time],
                 }
-                messages.append({"role": "user", "content": "<video>", 'ignore_end_stream': True})
+                messages.append({"role": "user", "content": "<video>", 'ignore_end_stream': True, "valid": True})
                 videos.append(video_info)
                 # 回答插入的时机不合适，所以不监督 llm loss, valid = False
-                messages.append({"role": "assistant", "content": answer, "valid": False})
+                messages.append({"role": "assistant", "content": answer, 'ignore_end_stream': True, "valid": False})
 
                 last_time = response_time
 
@@ -371,9 +374,9 @@ for subset in ['train', 'valid']:
                     "positive_time": [],
                     "negative_time": [[last_time-frame_interval, video_duration+frame_interval]]
                 }
-                messages.append({"role": "user", "content": "<video>", 'ignore_end_stream': True})
+                messages.append({"role": "user", "content": "<video>", 'ignore_end_stream': True, "valid": True})
                 videos.append(video_info)
-                messages.append({"role": "assistant", "content": '', "valid": False})
+                messages.append({"role": "assistant", "content": '', 'ignore_end_stream': True, "valid": False})
 
                 tar_item = {"messages": copy.deepcopy(messages), "videos": copy.deepcopy(videos)}
                 tar_data.append(tar_item)

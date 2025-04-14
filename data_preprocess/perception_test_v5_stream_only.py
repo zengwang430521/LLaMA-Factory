@@ -135,11 +135,11 @@ for item in test_data:
             test_videos.add(os.path.basename(video).split('.mp4')[0])
 
 
-ignore_single_action = True
-tar_file = f'/home/SENSETIME/zengwang/myprojects/task_define_service/data/perception_test/processed/REC_trainval_stream_only_v5.json'
+# ignore_single_action = True
+# tar_file = f'/home/SENSETIME/zengwang/myprojects/task_define_service/data/perception_test/processed/REC_trainval_stream_only_v5.json'
 
-# ignore_single_action = False
-# tar_file = f'/home/SENSETIME/zengwang/myprojects/task_define_service/data/perception_test/processed/REC_trainval_stream_only_v5_2.json'
+ignore_single_action = False
+tar_file = f'/home/SENSETIME/zengwang/myprojects/task_define_service/data/perception_test/processed/REC_trainval_stream_only_v5_2.json'
 
 tar_data = []
 label_count = {0: 0, 1: 0, -100: 0}

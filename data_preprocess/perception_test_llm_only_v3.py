@@ -112,7 +112,7 @@ def get_frame_label(messages, videos, video_duration, real_fps, mask_history=Fal
             break
 
     # 确定采样的frame idx
-    frame_times = []
+    frame_times =  []
     for video, time_seg, frame_num in zip(videos, video_time_segs, frame_nums):
         t_start, t_end = time_seg
         sample_times = np.linspace(t_start, t_end, frame_num + 1)[1:]
@@ -144,7 +144,8 @@ def get_frame_label(messages, videos, video_duration, real_fps, mask_history=Fal
 
 
 # 为了保证没有数据泄漏
-test_file = '/home/SENSETIME/zengwang/myprojects/task_define_service/data/OVO-Bench/ovo_bench.json'
+# test_file = '/home/SENSETIME/zengwang/myprojects/task_define_service/data/OVO-Bench/ovo_bench.json'
+test_file = '/afs/zengwang/projects/task_define_service/OVO-Bench/data/ovo_bench.json'
 test_videos = set()
 with open(test_file, 'r') as f:
     test_data = json.load(f)
@@ -167,19 +168,22 @@ instructions = [
     {"role": "user", "content": "What is the action now? Please response in short."},
 ]
 answer_insert_point = [0.7, 1.0]
-tar_file = f'/home/SENSETIME/zengwang/myprojects/task_define_service/data/perception_test/processed/REC_trainval_llm_only_v3.json'
+# tar_file = f'/home/SENSETIME/zengwang/myprojects/task_define_service/data/perception_test/processed/REC_trainval_llm_only_v3.json'
+tar_file = f'/afs/zengwang/projects/task_define_service/data/processed/perception_test/REC_trainval_llm_only_v3.json'
 
 
 tar_data = []
 label_count = {0: 0, 1: 0, -100: 0}
 num_other = 0
 
-act_desc_file= '/home/SENSETIME/zengwang/myprojects/task_define_service/data/perception_test/total_action_desc.json'
+# act_desc_file= '/home/SENSETIME/zengwang/myprojects/task_define_service/data/perception_test/total_action_desc.json'
+act_desc_file= '/afs/zengwang/projects/task_define_service/data/perception_test/total_action_desc.json'
 with open(act_desc_file, 'r', encoding='utf-8') as f:
     act_desc_dict = json.load(f)
 
 for subset in ['train', 'valid']:
-    src_file = f'/home/SENSETIME/zengwang/myprojects/task_define_service/data/perception_test/all_{subset}.json'
+    # src_file = f'/home/SENSETIME/zengwang/myprojects/task_define_service/data/perception_test/all_{subset}.json'
+    src_file = f'/afs/zengwang/projects/task_define_service/data/perception_test/all_{subset}.json'
 
     with open(src_file, 'r') as f:
         src_data = json.load(f)
@@ -199,7 +203,7 @@ for subset in ['train', 'valid']:
 
         query = random.choice(instructions)['content']
         query_time = 0
-        messages.append({"role": "user", "content": query, 'ignore_end_stream': True})
+        messages.append({"role": "user", "content": query, 'ignore_end_stream': True, "valid": True})
 
         last_time = query_time
 
@@ -227,10 +231,12 @@ for subset in ['train', 'valid']:
             video_info = {
                 "file": video_path,
                 "time": [last_time, response_time],
+                "positive_time": [[-2.0, -1.0]],
+                "negative_time": [[-2.0, -1.0]]
             }
-            messages.append({"role": "user", "content": "<video>", 'ignore_end_stream': True})
+            messages.append({"role": "user", "content": "<video>", 'ignore_end_stream': True, "valid": True})
             videos.append(video_info)
-            messages.append({"role": "assistant", "content": answer, "valid": True})
+            messages.append({"role": "assistant", "content": answer, 'ignore_end_stream': True, "valid": True})
             last_time = response_time
 
         if messages[-1]['role'] == 'user':

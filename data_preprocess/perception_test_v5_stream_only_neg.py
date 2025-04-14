@@ -126,7 +126,8 @@ Do not include any additional text or explanation in your response.
 """
 
 # 为了保证没有数据泄漏
-test_file = '/home/SENSETIME/zengwang/myprojects/task_define_service/data/OVO-Bench/ovo_bench.json'
+# test_file = '/home/SENSETIME/zengwang/myprojects/task_define_service/data/OVO-Bench/ovo_bench.json'
+test_file = '/afs/zengwang/projects/task_define_service/OVO-Bench/data/ovo_bench.json'
 test_videos = set()
 with open(test_file, 'r') as f:
     test_data = json.load(f)
@@ -137,20 +138,24 @@ for item in test_data:
             test_videos.add(os.path.basename(video).split('.mp4')[0])
 
 
-session_per_video = 1
-query_point = [0, 0.3]
-tar_file = f'/home/SENSETIME/zengwang/myprojects/task_define_service/data/perception_test/processed/REC_trainval_stream_only_v5_neg_1.json'
-
-
-# session_per_video = 4
+# session_per_video = 1
 # query_point = [0, 0.3]
-# tar_file = f'/home/SENSETIME/zengwang/myprojects/task_define_service/data/perception_test/processed/REC_trainval_stream_only_v5_neg_2.json'
+# # tar_file = f'/home/SENSETIME/zengwang/myprojects/task_define_service/data/perception_test/processed/REC_trainval_stream_only_v5_neg_1.json'
+# tar_file = f'/afs/zengwang/projects/task_define_service/data/processed/perception_test/REC_trainval_stream_only_v5_neg_1.json'
+
+
+session_per_video = 4
+query_point = [0, 0.3]
+tar_file = f'/home/SENSETIME/zengwang/myprojects/task_define_service/data/perception_test/processed/REC_trainval_stream_only_v5_neg_2.json'
+tar_file = f'/afs/zengwang/projects/task_define_service/data/processed/perception_test/REC_trainval_stream_only_v5_neg_2.json'
 
 
 # 统计 action 出现的次数：
 action_freq = defaultdict(lambda: 0)
 for subset in ['train', 'valid']:
-    src_file = f'/home/SENSETIME/zengwang/myprojects/task_define_service/data/perception_test/all_{subset}.json'
+    # src_file = f'/home/SENSETIME/zengwang/myprojects/task_define_service/data/perception_test/all_{subset}.json'
+    src_file = f'/afs/zengwang/projects/task_define_service/data/perception_test/all_{subset}.json'
+
     with open(src_file, 'r') as f:
         src_data = json.load(f)
     for video in tqdm(src_data):
@@ -189,7 +194,9 @@ tar_data = []
 label_count = {0: 0, 1: 0, -100: 0}
 
 for subset in ['train', 'valid']:
-    src_file = f'/home/SENSETIME/zengwang/myprojects/task_define_service/data/perception_test/all_{subset}.json'
+    # src_file = f'/home/SENSETIME/zengwang/myprojects/task_define_service/data/perception_test/all_{subset}.json'
+    src_file = f'/afs/zengwang/projects/task_define_service/data/perception_test/all_{subset}.json'
+
     with open(src_file, 'r') as f:
         src_data = json.load(f)
     for video in tqdm(src_data):
@@ -223,21 +230,21 @@ for subset in ['train', 'valid']:
             query_time = int(math.floor(q_point * video_duration))
             messages, videos = [], []
             if query_time > 0:
-                messages.append({"role": "user", "content": "<video>", 'ignore_end_stream': True})
-                videos.append({"file": video_path, "time": [0, query_time]})
-            messages.append({"role": "user", "content": query, 'ignore_end_stream': False})
+                messages.append({"role": "user", "content": "<video>", 'ignore_end_stream': True, "valid": True})
+                videos.append({"file": video_path, "time": [0, query_time], "positive_time": [[-2.0, -1.0]], "negative_time": [[-2.0, -1.0]]})
+            messages.append({"role": "user", "content": query, 'ignore_end_stream': False, "valid": True})
 
             # 用来训练保持沉默
             # fake answer 不能用来训练lm_head
             video_info = {
                 "file": video_path,
                 "time": [query_time, video_duration],
-                "positive_time": [],
+                "positive_time": [[-2.0, -1.0]],
                 "negative_time": [[query_time-frame_interval, video_duration+frame_interval]]
             }
-            messages.append({"role": "user", "content": "<video>", 'ignore_end_stream': True})
+            messages.append({"role": "user", "content": "<video>", 'ignore_end_stream': True, "valid": True})
             videos.append(video_info)
-            messages.append({"role": "assistant", "content": '', "valid": False})
+            messages.append({"role": "assistant", "content": '', 'ignore_end_stream': True, "valid": False})
 
             tar_item = {"messages": copy.deepcopy(messages), "videos": copy.deepcopy(videos)}
             tar_data.append(tar_item)
