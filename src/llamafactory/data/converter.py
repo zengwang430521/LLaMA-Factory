@@ -50,7 +50,7 @@ class DatasetConverter:
             return None
         else:
             medias = medias[:]
-
+        import pdb; pdb.set_trace()
         if self.dataset_attr.load_from in ["script", "file"] and isinstance(medias[0], str):
             for i in range(len(medias)):
                 if os.path.isfile(os.path.join(self.data_args.media_dir, medias[i])):
