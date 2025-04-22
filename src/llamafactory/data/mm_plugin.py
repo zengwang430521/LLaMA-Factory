@@ -1774,7 +1774,11 @@ class Qwen2VLStreamPluginV5(BasePlugin):
             sample_idxs = sample_idxs.clip(min=0, max=total_frames-1)
 
             sample_frame_shapes = [(frame_width, frame_height)] * len(sample_idxs)
-            sample_frame_shapes = _regularize_images_shape(sample_frame_shapes, image_resolution=getattr(processor, "video_resolution", 128 * 128))
+            sample_frame_shapes = _regularize_images_shape(
+                sample_frame_shapes,
+                image_max_pixels=getattr(processor, "video_max_pixels", 256 * 256),
+                image_min_pixels=getattr(processor, "video_min_pixels", 16 * 16),
+            )
 
             # image_processor 过程
             new_width, new_height = sample_frame_shapes[0]
