@@ -290,6 +290,9 @@ class SupervisedDatasetProcessor(DatasetProcessor):
                             audios=examples["_audios"][i] or [],
                         )
                 except:
+                    import pdb; pdb.set_trace()
+                    print(f'Debug: broken data!!!:{examples["_videos"][i]}.')
+                    (input_ids, labels, stream_labels, frame_idxs, frame_times, video_grid_thw, fps_per_video, masks, reserved_message_num) = self._encode_data_example_stream_v5(prompt=examples["_prompt"][i],response=examples["_response"][i],system=examples["_system"][i],tools=examples["_tools"][i],images=examples["_images"][i] or [],videos=examples["_videos"][i] or [],audios=examples["_audios"][i] or [])
                     print(f'Skip broken data!!!:{examples["_videos"][i]}.')
                     continue
 
