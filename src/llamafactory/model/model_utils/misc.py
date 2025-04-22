@@ -28,7 +28,7 @@ logger = logging.get_logger(__name__)
 def find_all_linear_modules(model: "PreTrainedModel", freeze_vision_tower: bool) -> list[str]:
     r"""Find all available modules to apply LoRA, GaLore or APOLLO."""
     model_type = getattr(model.config, "model_type", None)
-    forbidden_modules = {"lm_head"}
+    forbidden_modules = {"lm_head", "stream_head"}
     if model_type == "chatglm":
         forbidden_modules.add("output_layer")
     elif model_type == "internlm2":

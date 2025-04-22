@@ -302,8 +302,8 @@ _register_composite_model(
 
 
 _register_composite_model(
-    model_type="qwen2_vl_stream",
-    projector_key=["visual.merger", "stream_head"],
+    model_type="qwen2_vl_stream_v3",
+    projector_key="visual.merger",
     vision_model_keys=["visual.patch_embed", "visual.blocks"],
     language_model_keys=["model", "lm_head"],
     lora_conflict_keys=["patch_embed"],
@@ -311,8 +311,8 @@ _register_composite_model(
 
 
 _register_composite_model(
-    model_type="qwen2_5_vl_stream",
-    projector_key=["visual.merger", "stream_head"],
+    model_type="qwen2_5_vl_stream_v3",
+    projector_key="visual.merger",
     vision_model_keys=["visual.patch_embed", "visual.blocks"],
     language_model_keys=["model", "lm_head"],
     lora_conflict_keys=["patch_embed"],

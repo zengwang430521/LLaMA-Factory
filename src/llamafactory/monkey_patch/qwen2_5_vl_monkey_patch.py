@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Tuple, Union
 from transformers.models.auto import AutoModelForVision2Seq, AutoConfig
 from transformers.models.qwen2_5_vl.modeling_qwen2_5_vl import (
@@ -126,6 +127,7 @@ class Qwen2_5_VLStreamConfigV3(Qwen2_5_VLConfig):
         self.llm_loss_factor = llm_loss_factor
 
 
+@dataclass
 class Qwen2_5_VLStreamOutput(ModelOutput):
     """
     Base class for Qwen2VL causal language model (or autoregressive) outputs.
@@ -184,7 +186,6 @@ class Qwen2_5_VLStreamV3(Qwen2_5_VLForConditionalGeneration):
 
         # import pdb; pdb.set_trace()
         self.post_init()
-
 
     '''被mask的token也需要有position_ids'''
     def get_rope_index(
@@ -400,37 +401,10 @@ class Qwen2_5_VLStreamV3(Qwen2_5_VLForConditionalGeneration):
                 (masked), the loss is only computed for the tokens with labels in `[0, ..., config.vocab_size]`.
 
         Returns:
+        """
 
-        Example:
-
-        ```python
-        >>> from PIL import Image
-        >>> import requests
-        >>> from transformers import AutoProcessor, Qwen2_5_VLForConditionalGeneration
-
-        >>> model = Qwen2_5_VLForConditionalGeneration.from_pretrained("Qwen/Qwen2.5-VL-7B-Instruct")
-        >>> processor = AutoProcessor.from_pretrained("Qwen/Qwen2.5-VL-7B-Instruct")
-
-        >>> messages = [
-            {
-                "role": "user",
-                "content": [
-                    {"type": "image"},
-                    {"type": "text", "text": "What is shown in this image?"},
-                ],
-            },
-        ]
-        >>> url = "https://www.ilankelman.org/stopsigns/australia.jpg"
-        >>> image = Image.open(requests.get(url, stream=True).raw)
-
-        >>> text = processor.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
-        >>> inputs = processor(text=[text], images=[image], vision_infos=[vision_infos])
-
-        >>> # Generate
-        >>> generate_ids = model.generate(inputs.input_ids, max_length=30)
-        >>> tokenizer.batch_decode(generate_ids, skip_special_tokens=True, clean_up_tokenization_spaces=False)[0]
-        "The image shows a street scene with a red stop sign in the foreground. In the background, there is a large red gate with Chinese characters ..."
-        ```"""
+        # import pdb; pdb.set_trace()
+        # print('Debug: Qwen2_5_VLStreamV3 forward')
 
         output_attentions = output_attentions if output_attentions is not None else self.config.output_attentions
         output_hidden_states = (
@@ -484,12 +458,14 @@ class Qwen2_5_VLStreamV3(Qwen2_5_VLForConditionalGeneration):
         cache_position = torch.arange(
             past_seen_tokens, past_seen_tokens + inputs_embeds.shape[1], device=inputs_embeds.device
         )
+        # 为了获得causal_mask，output_attentions暂时设置为True
         causal_mask = self.model._update_causal_mask(
             attention_mask,
             inputs_embeds,
             cache_position=cache_position,
             past_key_values=past_key_values,
-            output_attentions=output_attentions)
+            output_attentions=True
+        )
         bsz, seq_len = attention_mask.shape
         mask_with_indices = torch.cumsum(attention_mask, dim=1)
         expanded_mask = mask_with_indices[:, None, None, :].expand(bsz, 1, seq_len, seq_len)

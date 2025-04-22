@@ -1557,6 +1557,9 @@ class Qwen2VLStreamPluginV5(BasePlugin):
     ) -> dict[str, Union[list[list["ImageObject"]], list[float]]]:
         results = []
         for video, sample_indices_seg in zip(videos, video_sample_idxs):
+            # import pdb; pdb.set_trace()
+            # print('Debug: read video frames')
+
             # 新的代码
             try:
                 vr = decord.VideoReader(video)
@@ -1842,8 +1845,6 @@ class Qwen2VLStreamPluginV5(BasePlugin):
         fps_per_video = mm_inputs["fps_per_video"]
 
 
-
-
         # 判断哪些帧需要回答
         frame_labels = []
         for sample_time, video in zip(frame_times, videos):
@@ -1898,6 +1899,9 @@ class Qwen2VLStreamPluginV5(BasePlugin):
         if "second_per_grid_ts" in processor.model_input_names:
             mm_inputs["second_per_grid_ts"] = [temporal_patch_size / fps for fps in fps_per_video]
 
+        # 正常插入占位token
+        num_image_tokens, num_video_tokens = 0, 0
+        messages = deepcopy(messages)
         for message in messages:
             content = message["content"]
             content_stream = deepcopy(message['content'])
@@ -1958,8 +1962,11 @@ class Qwen2VLStreamPluginV5(BasePlugin):
         if len(images) != num_image_tokens:
             raise ValueError(f"The number of images does not match the number of {IMAGE_PLACEHOLDER} tokens.")
 
-        if len(videos) != num_video_tokens:
+        if len(video_grid_thw) != num_video_tokens:
             raise ValueError(f"The number of videos does not match the number of {VIDEO_PLACEHOLDER} tokens.")
+
+        # 必须在这个过程中把video sample index计算清楚, 也作为返回
+        # 因为涉及到多段视频拼接成完整的一段，所以video_grid_thw也必须返回
 
         return messages, frame_idxs, frame_times, video_grid_thw, fps_per_video
 
@@ -1993,7 +2000,7 @@ class Qwen2VLStreamPluginV5(BasePlugin):
         """
         video_files = [v['file'] for v in videos]
         self._validate_input(processor, images, video_files, audios)
-        return self._get_mm_inputs(images, videos, audios, processor, video_sample_idxs, fps_per_video)
+        return self._get_mm_inputs(images, video_files, audios, processor, video_sample_idxs, fps_per_video)
 
 
 
