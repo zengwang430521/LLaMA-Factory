@@ -50,13 +50,22 @@ class DatasetConverter:
             return None
         else:
             medias = medias[:]
-        import pdb; pdb.set_trace()
-        if self.dataset_attr.load_from in ["script", "file"] and isinstance(medias[0], str):
-            for i in range(len(medias)):
-                if os.path.isfile(os.path.join(self.data_args.media_dir, medias[i])):
-                    medias[i] = os.path.join(self.data_args.media_dir, medias[i])
-                else:
-                    logger.warning_rank0_once(f"Media {medias[i]} does not exist in `media_dir`. Use original path.")
+        if self.dataset_attr.load_from in ["script", "file"]:
+            if isinstance(medias[0], str):
+                for i in range(len(medias)):
+                    if os.path.isfile(os.path.join(self.data_args.media_dir, medias[i])):
+                        medias[i] = os.path.join(self.data_args.media_dir, medias[i])
+                    else:
+                        logger.warning_rank0_once(f"Media {medias[i]} does not exist in `media_dir`. Use original path.")
+
+            if isinstance(medias[0], dict) and isinstance(medias[0].get('file', None), str):
+                for i in range(len(medias)):
+                    media_file = medias[i]['file']
+                    new_media_file = os.path.join(self.data_args.media_dir, media_file)
+                    if os.path.isfile(new_media_file):
+                        medias[i]['file'] = new_media_file
+                    else:
+                        logger.warning_rank0_once(f"Media {media_file} does not exist in `media_dir`. Use original path.")
 
         return medias
 
