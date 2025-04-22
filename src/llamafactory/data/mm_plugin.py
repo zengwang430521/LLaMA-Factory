@@ -1791,7 +1791,7 @@ class Qwen2VLStreamPluginV5(BasePlugin):
 
         temporal_patch_size: int = getattr(image_processor, "temporal_patch_size", 2)
         if "second_per_grid_ts" in processor.model_input_names:
-            mm_inputs["second_per_grid_ts"] = [temporal_patch_size / fps for fps in "fps_per_video"]
+            mm_inputs["second_per_grid_ts"] = [temporal_patch_size / fps for fps in fps_per_video]
 
         mm_inputs["video_grid_thw"] = video_grid_thw
         mm_inputs["frame_times"] = frame_times
@@ -1896,7 +1896,7 @@ class Qwen2VLStreamPluginV5(BasePlugin):
 
         temporal_patch_size: int = getattr(image_processor, "temporal_patch_size", 2)
         if "second_per_grid_ts" in processor.model_input_names:
-            mm_inputs["second_per_grid_ts"] = [temporal_patch_size / fps for fps in "fps_per_video"]
+            mm_inputs["second_per_grid_ts"] = [temporal_patch_size / fps for fps in fps_per_video]
 
         for message in messages:
             content = message["content"]
