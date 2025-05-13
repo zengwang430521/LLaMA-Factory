@@ -406,6 +406,36 @@ class Qwen2_5_VLStreamV3(Qwen2_5_VLForConditionalGeneration):
         # import pdb; pdb.set_trace()
         # print('Debug: Qwen2_5_VLStreamV3 forward')
 
+
+        # if not hasattr(self, "tokenizer"):
+        #     from transformers.models.auto import AutoTokenizer
+        #     self.tokenizer = AutoTokenizer.from_pretrained("/afs/zengwang/ckpt/StreamV3-Qwen2.5-VL-7B-Instruct")
+        #
+        #     input_texts = self.tokenizer.batch_decode(input_ids)
+        #     print(input_texts[0])
+        #
+        #     (labels != -100).sum(), (stream_labels != -100).sum()
+        #     print(self.tokenizer.decode(input_ids[labels!=-100]))
+        #
+        #
+        #     indexs = (input_ids == 151645).nonzero()
+        #     indexs = (stream_labels != -100).nonzero()
+        #
+        #     for index in indexs:
+        #         idx_batch, idx_token = index;
+        #         print('-'* 50);
+        #         print(idx_batch.item(), idx_token.item(), stream_labels[idx_batch, idx_token].item());
+        #         idx_end = min(idx_token+20, input_ids.shape[1]-1);
+        #         idx_begin = max(idx_token-20, 0);
+        #         print(self.tokenizer.decode(input_ids[idx_batch, idx_begin:idx_token]) +
+        #               '\n@\n' + self.tokenizer.decode(input_ids[idx_batch, idx_token]) + f'({stream_labels[idx_batch, idx_token].item()})' + '\n@\n' +
+        #               self.tokenizer.decode(input_ids[idx_batch, idx_token+1:idx_end]))
+        #
+        #         # print(self.tokenizer.decode(input_ids[idx_batch, idx_begin:idx_token]))
+        #         # print(self.tokenizer.decode(input_ids[idx_batch, idx_token:idx_end]))
+        #         (stream_labels == 0).nonzero()
+        #         self.tokenizer.batch_decode(input_ids[stream_labels!=-100])
+
         output_attentions = output_attentions if output_attentions is not None else self.config.output_attentions
         output_hidden_states = (
             output_hidden_states if output_hidden_states is not None else self.config.output_hidden_states
@@ -520,6 +550,45 @@ class Qwen2_5_VLStreamV3(Qwen2_5_VLForConditionalGeneration):
             return_dict=return_dict,
             cache_position=cache_position,
         )
+        #
+        # import pdb; pdb.set_trace()
+        # print("DEBUG")
+        # hidden_states = outputs[0]
+        #
+        # first_idx = (attention_mask==0).nonzero()[0,1]
+        # attention_mask0 = attention_mask.clone()
+        # attention_mask0[0, first_idx] = 1
+        # attention_mask0[0, first_idx+1] = 1
+        # outputs0 = self.model(
+        #     input_ids=None,
+        #     position_ids=position_ids,
+        #     attention_mask=attention_mask0,
+        #     past_key_values=past_key_values,
+        #     inputs_embeds=inputs_embeds,
+        #     use_cache=use_cache,
+        #     output_attentions=output_attentions,
+        #     output_hidden_states=output_hidden_states,
+        #     return_dict=return_dict,
+        # )
+        # hidden_states0 = outputs0[0]
+        # torch.eq(hidden_states[0, first_idx, :], hidden_states0[0, first_idx, :]).all()
+        # torch.eq(hidden_states[0, first_idx+1, :], hidden_states0[0, first_idx+1, :]).all()
+        #
+        # outputs1 = self.model(
+        #     input_ids=None,
+        #     position_ids=position_ids,
+        #     attention_mask=attention_mask,
+        #     past_key_values=past_key_values,
+        #     inputs_embeds=inputs_embeds,
+        #     use_cache=use_cache,
+        #     output_attentions=output_attentions,
+        #     output_hidden_states=output_hidden_states,
+        #     return_dict=return_dict,
+        # );
+        # hidden_states1 = outputs1[0]
+        # torch.eq(hidden_states[attention_mask==1, :], hidden_states1[attention_mask==1, :]).all()
+        #
+        #
 
         # outputs = self.model(
         #     input_ids=None,

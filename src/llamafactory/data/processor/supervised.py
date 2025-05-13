@@ -133,10 +133,6 @@ class SupervisedDatasetProcessor(DatasetProcessor):
         masks = [1] * len(input_ids)
         stream_labels = [IGNORE_INDEX] * len(labels)
 
-        encoded_pairs = self.template.encode_multiturn(self.tokenizer, messages, system, tools)
-        total_length = len(input_ids) + (1 if self.template.efficient_eos else 0)
-        if self.data_args.mask_history:
-            encoded_pairs = encoded_pairs[::-1]  # high priority for last turns
 
         # TODO: format 应该放在别的地方，先暂时放在这里了
         # TODO: 暂时采用粗暴的后截断，和LLAMA_FACTORY默认的截断方式不一致
@@ -242,6 +238,9 @@ class SupervisedDatasetProcessor(DatasetProcessor):
                 if valid is None:
                     valid = True
 
+                # import pdb; pdb.set_trace()
+                # print("Debug: 设置labels")
+
                 if mask_history and i < len(messages) - 1:
                     encode_labels = [IGNORE_INDEX] * len(encoded_prefix + encoded_content)
                 elif not valid:
@@ -290,24 +289,25 @@ class SupervisedDatasetProcessor(DatasetProcessor):
                             audios=examples["_audios"][i] or [],
                         )
                 except:
-                    import pdb; pdb.set_trace()
-                    print(f'Debug: broken data!!!:{examples["_videos"][i]}.')
-                    (input_ids, labels, stream_labels, frame_idxs, frame_times,
-                     video_grid_thw, fps_per_video, masks, reserved_message_num) = \
-                        self._encode_data_example_stream_v5(
-                            prompt=examples["_prompt"][i],
-                            response=examples["_response"][i],
-                            system=examples["_system"][i],
-                            tools=examples["_tools"][i],
-                            images=examples["_images"][i] or [],
-                            videos=examples["_videos"][i] or [],
-                            audios=examples["_audios"][i] or [],
-                        )
+                    # import pdb; pdb.set_trace()
+                    # print(f'Debug: broken data!!!:{examples["_videos"][i]}.')
+                    # (input_ids, labels, stream_labels, frame_idxs, frame_times,
+                    #  video_grid_thw, fps_per_video, masks, reserved_message_num) = \
+                    #     self._encode_data_example_stream_v5(
+                    #         prompt=examples["_prompt"][i],
+                    #         response=examples["_response"][i],
+                    #         system=examples["_system"][i],
+                    #         tools=examples["_tools"][i],
+                    #         images=examples["_images"][i] or [],
+                    #         videos=examples["_videos"][i] or [],
+                    #         audios=examples["_audios"][i] or [],
+                    #     )
                     print(f'Skip broken data!!!:{examples["_videos"][i]}.')
                     continue
 
                 model_inputs["input_ids"].append(input_ids)
-                model_inputs["attention_mask"].append([1] * len(input_ids))
+                # model_inputs["attention_mask"].append([1] * len(input_ids))
+                model_inputs["attention_mask"].append(masks)
                 model_inputs["labels"].append(labels)
                 model_inputs["stream_labels"].append(stream_labels)
 

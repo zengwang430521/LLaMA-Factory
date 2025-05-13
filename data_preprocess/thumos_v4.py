@@ -68,6 +68,7 @@ for version in ['14_valid', '15_valid']:
         for video_id in action_dict.keys():
             if video_id in test_videos:
                 print(f'skip: {video_id}')
+                continue
 
             if version == '15_valid':
                 video_path = join(f'thumos/videos/{video_id}.mp4')

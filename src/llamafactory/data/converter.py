@@ -273,6 +273,9 @@ class SharegptStreamDatasetConverter(DatasetConverter):
         #     broken_data = True
 
         '''stream 数据存在1个问题多轮回答的形式，不严格按照user，assistant交错的方式组织，所以跳过验证'''
+        # import pdb; pdb.set_trace()
+        # print('Debug: align dataset format')
+
         for turn_idx, message in enumerate(messages):
             '''现在已经不再使用messages中的time了'''
             # # time 统一用float, 防止不匹配

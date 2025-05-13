@@ -17,7 +17,7 @@
 
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Literal, Optional
-
+import copy
 import numpy as np
 import torch
 import torch.nn.functional as F
@@ -218,7 +218,16 @@ class MultiModalDataCollatorForSeq2Seq(DataCollatorForSeq2Seq):
             for i, feature in enumerate(features):
                 feature["token_type_ids"] = token_type_ids[i]
 
-        features: dict[str, torch.Tensor] = super().__call__(features)
+        if flag_stream_v5:
+            stream_features = copy.deepcopy(features)
+            for stream_feature, stream_label in zip(stream_features, batch_stream_labels):
+                stream_feature["labels"] = stream_label
+            stream_features: dict[str, torch.Tensor] = super().__call__(stream_features)
+            features: dict[str, torch.Tensor] = super().__call__(features)
+            features['stream_labels'] = stream_features['labels']
+            assert features['stream_labels'].shape == features['labels'].shape
+        else:
+            features: dict[str, torch.Tensor] = super().__call__(features)
 
         if self.model is not None and hasattr(self.model, "get_rope_index"):  # for qwen2vl mrope
             if flag_stream_v5:

@@ -98,6 +98,8 @@ def run_sft(
 
     # Training
     if training_args.do_train:
+        # import pdb; pdb.set_trace()
+        # print("Debug: train!")
         train_result = trainer.train(resume_from_checkpoint=training_args.resume_from_checkpoint)
         trainer.save_model()
         if finetuning_args.include_effective_tokens_per_second:
@@ -124,19 +126,22 @@ def run_sft(
 
 
     # 强行加载stream_head_weight
-    # import pdb; pdb.set_trace()
-    # print('Debug: Eval')
     if training_args.resume_from_checkpoint is not None:
+        # import pdb; pdb.set_trace()
+        # print('Debug: Eval')
+
         from safetensors.torch import load_file
         import os
         import torch
+
+        trainer.model = trainer.model.eval()
         file_path = os.path.join(training_args.resume_from_checkpoint, 'adapter_model.safetensors')
         tensors = load_file(file_path)
         print(f"In model: {model.base_model.model.stream_head.weight}")
         print(f"In ckpt: {tensors['base_model.model.stream_head.weight']}")
         with torch.no_grad():
-            trainer.model.base_model.model.stream_head.lora_A.default.weight.fill_(0)
-            trainer.model.base_model.model.stream_head.lora_B.default.weight.fill_(0)
+            # trainer.model.base_model.model.stream_head.lora_A.default.weight.fill_(0)
+            # trainer.model.base_model.model.stream_head.lora_B.default.weight.fill_(0)
             trainer.model.base_model.model.stream_head.weight.copy_(tensors['base_model.model.stream_head.weight'].to(model.device))
         trainer.model = trainer.model.eval()
         trainer.model = trainer.model.merge_and_unload()
